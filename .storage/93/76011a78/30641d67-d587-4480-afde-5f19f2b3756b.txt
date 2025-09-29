@@ -1,0 +1,2 @@
+$ cp "/workspace/uploads/icono legality.png" public/assets/legality-logo.png
+cp: cannot create regular file 'public/assets/legality-logo.png': No such file or directory

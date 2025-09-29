@@ -1,0 +1,3 @@
+$ rm -rf node_modules .vite node_modules/.vite dist
+rm: cannot remove 'node_modules/.pnpm/date-fns@3.6.0/node_modules/date-fns_tmp_337/fp': Directory not empty
+rm: cannot remove 'node_modules/.pnpm/lucide-react@0.462.0_react@19.1.1/node_modules/lucide-react_tmp_337/dist/esm/icons': Directory not empty

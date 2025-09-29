@@ -1,0 +1,18 @@
+$ pnpm add @supabase/supabase-js @supabase/auth-ui-react @supabase/auth-ui-shared
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Progress: resolved 2, reused 0, downloaded 0, added 0
+Progress: resolved 2, reused 1, downloaded 0, added 0
+Progress: resolved 32, reused 30, downloaded 0, added 0
+Progress: resolved 77, reused 75, downloaded 2, added 0
+Progress: resolved 335, reused 333, downloaded 2, added 0
+Progress: resolved 474, reused 410, downloaded 4, added 0
+ WARN  1 deprecated subdependencies found: rollup-plugin-terser@7.0.2
+Packages: +6
+++++++
+Progress: resolved 507, reused 427, downloaded 6, added 6, done
+
+dependencies:
++ @supabase/auth-ui-react 0.4.7
++ @supabase/auth-ui-shared 0.1.8
+
+Done in 11s

@@ -1,0 +1,76 @@
+$ grep -r "authService" src/ --include="*.tsx" --include="*.ts" | grep -v node_modules
+src/App.tsx:import { authService } from '@/lib/auth';
+src/App.tsx:        await authService.initialize();
+src/App.tsx:        const user = authService.getCurrentUser();
+src/App.tsx:        const profile = authService.getCurrentProfile();
+src/App.tsx:            const refreshedProfile = await authService.refreshProfile();
+src/App.tsx:        const user = authService.getCurrentUser();
+src/App.tsx:        const profile = authService.getCurrentProfile();
+src/App.tsx:        const refreshedProfile = await authService.refreshProfile();
+src/App.tsx:      await authService.signOut();
+src/components/auth/LoginForm.tsx:import { authService } from '@/lib/auth';
+src/components/auth/LoginForm.tsx:    const result = await authService.login(email, password);
+src/components/client/ClientPanel.tsx:import { authService } from '@/lib/auth'
+src/components/client/ClientPanel.tsx:  const currentUser = authService.getCurrentProfile()
+src/components/client/ClientPanel.tsx:  if (!authService.canAccessClientPanel()) {
+src/components/dashboard/Chat.tsx:import { authService } from '@/lib/auth';
+src/components/dashboard/Chat.tsx:  const clientId = authService.getCurrentClientId();
+src/components/dashboard/Chat.tsx:        sender_name: authService.getCurrentUser()?.nombre || 'Cliente',
+src/components/dashboard/ClientAccount.tsx:import { authService } from '@/lib/auth';
+src/components/dashboard/ClientAccount.tsx:  const clientId = authService.getCurrentClientId();
+src/components/dashboard/CollaboratorManager.tsx:import { authService } from '@/lib/auth';
+src/components/dashboard/CollaboratorManager.tsx:  const clientId = authService.getCurrentClientId();
+src/components/dashboard/DriveIntegration.tsx:import { authService } from '@/lib/auth';
+src/components/dashboard/DriveIntegration.tsx:  const clientId = authService.getCurrentClientId();
+src/components/dashboard/NewTaskModal.tsx:import { authService } from '@/lib/auth';
+src/components/dashboard/NewTaskModal.tsx:  const clientId = authService.getCurrentClientId();
+src/components/dashboard/NewTaskModal.tsx:  const currentUser = authService.getCurrentUser();
+src/components/dashboard/Reports.tsx:import { authService } from '@/lib/auth';
+src/components/dashboard/Reports.tsx:  const clientId = authService.getCurrentClientId();
+src/components/dashboard/RiskMatrix.tsx:import { authService } from '@/lib/auth';
+src/components/dashboard/RiskMatrix.tsx:  const clientId = authService.getCurrentClientId();
+src/components/dashboard/TaskChatModal.tsx:import { authService } from '@/lib/auth';
+src/components/dashboard/TaskChatModal.tsx:  const currentUser = authService.getCurrentUser();
+src/components/dashboard/TaskEditModal.tsx:import { authService } from '@/lib/auth';
+src/components/dashboard/TaskEditModal.tsx:  const clientId = authService.getCurrentClientId();
+src/components/dashboard/TaskKanban.tsx:import { authService } from '@/lib/auth';
+src/components/dashboard/TaskKanban.tsx:  const clientId = authService.getCurrentClientId();
+src/components/dashboard/TaskKanban.tsx:  const currentUser = authService.getCurrentUser();
+src/components/layout/Header.tsx:import { authService } from '@/lib/auth';
+src/components/layout/Header.tsx:  const user = authService.getCurrentUser();
+src/components/layout/Header.tsx:    authService.logout();
+src/lib/supabaseService.ts:import { authService } from './auth'
+src/pages/Dashboard.tsx:import { authService } from '@/lib/auth';
+src/pages/Dashboard.tsx:  const clientId = authService.getCurrentClientId();
+$ pnpm run build
+
+
+> shadcnui@ build /workspace/shadcn-ui
+> vite build
+
+vite v5.4.19 building for production...
+transforming...
+✓ 1807 modules transformed.
+x Build failed in 5.26s
+error during build:
+src/components/client/ClientPanel.tsx (11:9): "authService" is not exported by "src/lib/auth.ts", imported by "src/components/client/ClientPanel.tsx".
+file: /workspace/shadcn-ui/src/components/client/ClientPanel.tsx:11:9
+
+ 9: import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/c...
+10: import { Loader2, Briefcase, CheckCircle, Clock, AlertCircle, Users, MessageCircle } from 'lucide-react'
+11: import { authService } from '@/lib/auth'
+             ^
+12: import { dbService } from '@/lib/database'
+13: import { CasoWithDetails, Tarea } from '@/lib/supabase'
+
+    at getRollupError (file:///workspace/shadcn-ui/node_modules/.pnpm/rollup@4.45.1/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at error (file:///workspace/shadcn-ui/node_modules/.pnpm/rollup@4.45.1/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+    at Module.error (file:///workspace/shadcn-ui/node_modules/.pnpm/rollup@4.45.1/node_modules/rollup/dist/es/shared/node-entry.js:16830:16)
+    at Module.traceVariable (file:///workspace/shadcn-ui/node_modules/.pnpm/rollup@4.45.1/node_modules/rollup/dist/es/shared/node-entry.js:17279:29)
+    at ModuleScope.findVariable (file:///workspace/shadcn-ui/node_modules/.pnpm/rollup@4.45.1/node_modules/rollup/dist/es/shared/node-entry.js:14925:39)
+    at FunctionScope.findVariable (file:///workspace/shadcn-ui/node_modules/.pnpm/rollup@4.45.1/node_modules/rollup/dist/es/shared/node-entry.js:5620:38)
+    at FunctionBodyScope.findVariable (file:///workspace/shadcn-ui/node_modules/.pnpm/rollup@4.45.1/node_modules/rollup/dist/es/shared/node-entry.js:5620:38)
+    at MemberExpression.bind (file:///workspace/shadcn-ui/node_modules/.pnpm/rollup@4.45.1/node_modules/rollup/dist/es/shared/node-entry.js:7324:49)
+    at CallExpression.bind (file:///workspace/shadcn-ui/node_modules/.pnpm/rollup@4.45.1/node_modules/rollup/dist/es/shared/node-entry.js:2785:23)
+    at CallExpression.bind (file:///workspace/shadcn-ui/node_modules/.pnpm/rollup@4.45.1/node_modules/rollup/dist/es/shared/node-entry.js:11986:15)
+ ELIFECYCLE  Command failed with exit code 1.

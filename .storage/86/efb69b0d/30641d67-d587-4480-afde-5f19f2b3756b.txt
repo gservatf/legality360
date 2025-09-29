@@ -1,0 +1,19 @@
+$ pnpm run lint && pnpm run build
+
+> shadcnui@ lint /workspace/shadcn-ui
+> eslint --quiet ./src
+
+
+/workspace/shadcn-ui/src/components/admin/AdminPanel.tsx
+  31:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/workspace/shadcn-ui/src/components/client/ClientPanel.tsx
+  28:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/workspace/shadcn-ui/src/components/professional/ProfessionalPanel.tsx
+   31:38   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  470:110  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 4 problems (4 errors, 0 warnings)
+
+ ELIFECYCLE  Command failed with exit code 1.
