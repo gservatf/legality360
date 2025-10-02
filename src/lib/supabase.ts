@@ -55,6 +55,7 @@ export interface Tarea {
   titulo: string
   descripcion: string | null
   estado: 'pendiente' | 'en_progreso' | 'completada'
+  fecha_limite?: string | null
   created_at: string
   caso?: Caso
   asignado?: Profile
