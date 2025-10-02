@@ -362,7 +362,7 @@ class DatabaseService {
     }
   }
 
-
+  async deleteCaso(casoId: string): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('casos')
@@ -371,7 +371,6 @@ class DatabaseService {
 
       if (error) {
         console.error('Error deleting caso:', error)
-
         return false
       }
 
@@ -382,6 +381,7 @@ class DatabaseService {
   }
 
   // Task management
+  async getAllTareas(): Promise<Tarea[]> {
     try {
       const { data, error } = await supabase
         .from('tareas')
@@ -393,6 +393,16 @@ class DatabaseService {
         .order('created_at', { ascending: false })
 
       if (error) {
+        console.error('Error fetching all tasks:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('Error in getAllTareas:', error)
+      return []
+    }
+  }
 
   async getTareasByUser(userId: string): Promise<Tarea[]> {
     try {
@@ -413,6 +423,30 @@ class DatabaseService {
       return data || []
     } catch (error) {
       console.error('Error in getTareasByUser:', error)
+      return []
+    }
+  }
+
+  async getTareasByCaso(casoId: string): Promise<Tarea[]> {
+    try {
+      const { data, error } = await supabase
+        .from('tareas')
+        .select(`
+          *,
+          caso:casos(*),
+          asignado:profiles(*)
+        `)
+        .eq('caso_id', casoId)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching tasks by caso:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('Error in getTareasByCaso:', error)
       return []
     }
   }
@@ -597,9 +631,6 @@ class DatabaseService {
       console.error('Error en solicitarHorasExtra:', error)
       return null
     }
-  }
-
-
   }
 }
 
