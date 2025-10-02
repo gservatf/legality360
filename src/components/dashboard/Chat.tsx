@@ -1,32 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { MessageCircle, Send, User } from 'lucide-react';
-import { mockDB } from '@/lib/mockDatabase';
+import { dashboardDataService } from '@/lib/dashboardAdapter';
 import { authService } from '@/lib/auth';
+
+interface ChatMessage {
+  message_id: string;
+  caso_id: string;
+  sender: 'cliente' | 'analista';
+  sender_name: string;
+  mensaje: string;
+  fecha_envio: string;
+  leido: boolean;
+}
 
 export default function Chat() {
   const [newMessage, setNewMessage] = useState('');
-  const clientId = authService.getCurrentClientId();
-  const cases = clientId ? mockDB.getCasesByClientId(clientId) : [];
-  const currentCase = cases[0]; // For demo, use first case
-  const messages = currentCase ? mockDB.getChatMessagesByCaseId(currentCase.caso_id) : [];
-
-  const handleSendMessage = () => {
-    if (newMessage.trim() && currentCase) {
-      mockDB.addChatMessage({
-        caso_id: currentCase.caso_id,
         sender: 'cliente',
-        sender_name: authService.getCurrentUser()?.nombre || 'Cliente',
+        sender_name: profile?.full_name || 'Cliente',
         mensaje: newMessage.trim(),
         fecha_envio: new Date().toISOString(),
         leido: false
-      });
+      };
+      
+      const updatedMessages = [...messages, message];
+      setMessages(updatedMessages);
+      
+      // Save to localStorage (chat not yet in Supabase)
+      localStorage.setItem(`chat_messages_${currentCase.caso_id}`, JSON.stringify(updatedMessages));
       setNewMessage('');
-      // In a real app, this would trigger a re-render
-      window.location.reload();
     }
   };
 
@@ -53,6 +58,16 @@ export default function Chat() {
   const sortedMessages = [...messages].sort((a, b) => 
     new Date(a.fecha_envio).getTime() - new Date(b.fecha_envio).getTime()
   );
+
+  if (loading) {
+    return (
+      <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardContent className="py-8 text-center text-gray-500">
+          Cargando chat...
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">

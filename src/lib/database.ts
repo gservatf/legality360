@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
-import type { Profile, Empresa, Caso, Tarea, ProfileWithTaskCount, CasoWithDetails } from './supabase'
 
 class DatabaseService {
+  private channels: Map<string, RealtimeChannel> = new Map()
   // Profile management with role-based access
   async getAllProfiles(): Promise<Profile[]> {
     try {
@@ -362,36 +362,7 @@ class DatabaseService {
     }
   }
 
-  async updateCaso(casoId: string, titulo: string, empresaId?: string, clienteId?: string, estado?: 'activo' | 'cerrado'): Promise<boolean> {
-    try {
-      const updateData: {
-        titulo: string
-        empresa_id?: string
-        cliente_id?: string
-        estado?: 'activo' | 'cerrado'
-      } = { titulo }
-      if (empresaId) updateData.empresa_id = empresaId
-      if (clienteId) updateData.cliente_id = clienteId
-      if (estado) updateData.estado = estado
 
-      const { error } = await supabase
-        .from('casos')
-        .update(updateData)
-        .eq('id', casoId)
-
-      if (error) {
-        console.error('Error updating caso:', error)
-        return false
-      }
-
-      return true
-    } catch (error) {
-      console.error('Error in updateCaso:', error)
-      return false
-    }
-  }
-
-  async deleteCaso(casoId: string): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('casos')
@@ -400,18 +371,17 @@ class DatabaseService {
 
       if (error) {
         console.error('Error deleting caso:', error)
+
         return false
       }
 
       return true
     } catch (error) {
-      console.error('Error in deleteCaso:', error)
       return false
     }
   }
 
   // Task management
-  async getAllTareas(): Promise<Tarea[]> {
     try {
       const { data, error } = await supabase
         .from('tareas')
@@ -423,16 +393,7 @@ class DatabaseService {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching all tasks:', error)
-        return []
-      }
 
-      return data || []
-    } catch (error) {
-      console.error('Error in getAllTareas:', error)
-      return []
-    }
-  }
   async getTareasByUser(userId: string): Promise<Tarea[]> {
     try {
       const { data, error } = await supabase
@@ -456,27 +417,77 @@ class DatabaseService {
     }
   }
 
-  async createTarea(casoId: string, asignadoA: string, titulo: string, descripcion?: string): Promise<boolean> {
+  async createTarea(casoId: string, asignadoA: string, titulo: string, descripcion: string, fechaLimite?: string): Promise<{ data: Tarea | null; error: any }> {
     try {
-      const { error } = await supabase
+      const insertData: any = {
+        caso_id: casoId,
+        asignado_a: asignadoA,
+        titulo,
+        descripcion,
+        estado: 'pendiente'
+      }
+
+      if (fechaLimite) {
+        insertData.fecha_limite = fechaLimite
+      }
+
+      const { data, error } = await supabase
         .from('tareas')
-        .insert([{
-          caso_id: casoId,
-          asignado_a: asignadoA,
-          titulo,
-          descripcion,
-          estado: 'pendiente'
-        }])
+        .insert([insertData])
+        .select()
+        .single()
 
       if (error) {
         console.error('Error creating tarea:', error)
-        return false
+        return { data: null, error }
       }
 
-      return true
+      return { data, error: null }
     } catch (error) {
       console.error('Error in createTarea:', error)
-      return false
+      return { data: null, error }
+    }
+  }
+
+  async updateTarea(tareaId: string, data: Partial<Tarea>): Promise<{ data: Tarea | null; error: any }> {
+    try {
+      const { data: updatedTarea, error } = await supabase
+        .from('tareas')
+        .update(data)
+        .eq('id', tareaId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating tarea:', error)
+        return { data: null, error }
+      }
+
+      return { data: updatedTarea, error: null }
+    } catch (error) {
+      console.error('Error in updateTarea:', error)
+      return { data: null, error }
+    }
+  }
+
+  async updateTareaStatus(tareaId: string, estado: 'pendiente' | 'en_progreso' | 'completada'): Promise<{ data: Tarea | null; error: any }> {
+    try {
+      const { data, error } = await supabase
+        .from('tareas')
+        .update({ estado })
+        .eq('id', tareaId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating tarea status:', error)
+        return { data: null, error }
+      }
+
+      return { data, error: null }
+    } catch (error) {
+      console.error('Error in updateTareaStatus:', error)
+      return { data: null, error }
     }
   }
 
@@ -586,6 +597,9 @@ class DatabaseService {
       console.error('Error en solicitarHorasExtra:', error)
       return null
     }
+  }
+
+
   }
 }
 

@@ -55,6 +55,7 @@ export interface Tarea {
   titulo: string
   descripcion: string | null
   estado: 'pendiente' | 'en_progreso' | 'completada'
+  fecha_limite?: string | null
   created_at: string
   caso?: Caso
   asignado?: Profile
@@ -70,4 +71,15 @@ export interface CasoWithDetails extends Caso {
   asignaciones: (Asignacion & { usuario: Profile })[]
   tareas_count?: number
   tareas_pendientes?: number
+}
+
+export interface ChatMessage {
+  id: string
+  caso_id: string
+  sender: 'cliente' | 'analista'
+  sender_name: string
+  mensaje: string
+  fecha_envio: string
+  leido: boolean
+  created_at?: string
 }
