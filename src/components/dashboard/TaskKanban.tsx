@@ -147,7 +147,7 @@ export default function TaskKanban() {
 
   const openGoogleDrive = (task: Task) => {
     // In a real app, this would open the specific task folder
-    const driveUrl = `https://drive.google.com/drive/folders/TASK-${task.task_id}`;
+    const driveUrl = `https://drive.google.com/drive/folders/TASK-${task.id}`;
     window.open(driveUrl, '_blank');
   };
 
@@ -192,7 +192,7 @@ export default function TaskKanban() {
                   
                   <div className="space-y-3">
                     {columnTasks.map(task => (
-                      <Card key={task.task_id} className="hover:shadow-md transition-shadow duration-200 group">
+                      <Card key={task.id} className="hover:shadow-md transition-shadow duration-200 group">
                         <CardContent className="p-4">
                           <div className="space-y-3">
                             <div className="flex items-start justify-between">
@@ -275,7 +275,7 @@ export default function TaskKanban() {
                                     className="text-xs h-7"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleTaskStatusChange(task.task_id, 'en proceso');
+                                      handleTaskStatusChange(task.id, 'en proceso');
                                     }}
                                   >
                                     Iniciar
@@ -287,7 +287,7 @@ export default function TaskKanban() {
                                     className="text-xs h-7"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleTaskStatusChange(task.task_id, 'completada');
+                                      handleTaskStatusChange(task.id, 'completada');
                                     }}
                                   >
                                     Completar
@@ -337,7 +337,7 @@ export default function TaskKanban() {
           isOpen={isNewTaskModalOpen}
           onClose={() => setIsNewTaskModalOpen(false)}
           onSave={handleNewTask}
-          caseId={currentCase.caso_id}
+          caseId={currentCase.id}
         />
       )}
 

@@ -19,44 +19,6 @@ interface ChatMessage {
 
 export default function Chat() {
   const [newMessage, setNewMessage] = useState('');
-  const [cases, setCases] = useState<any[]>([]);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const profile = await authService.getCurrentProfile();
-        if (profile && profile.role === 'cliente') {
-          const fetchedCases = await dashboardDataService.getCasesByClientId(profile.id);
-          setCases(fetchedCases);
-          
-          // Load messages from localStorage (chat not yet in Supabase)
-          if (fetchedCases.length > 0) {
-            const savedMessages = localStorage.getItem(`chat_messages_${fetchedCases[0].caso_id}`);
-            if (savedMessages) {
-              setMessages(JSON.parse(savedMessages));
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error loading chat data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
-
-  const currentCase = cases[0];
-
-  const handleSendMessage = async () => {
-    if (newMessage.trim() && currentCase) {
-      const profile = await authService.getCurrentProfile();
-      const message: ChatMessage = {
-        message_id: `msg_${Date.now()}`,
-        caso_id: currentCase.caso_id,
         sender: 'cliente',
         sender_name: profile?.full_name || 'Cliente',
         mensaje: newMessage.trim(),

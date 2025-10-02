@@ -68,7 +68,7 @@ export default function TaskEditModal({ task, isOpen, onClose, onSave, userRole 
       setSelectedDate(task.fecha_limite ? new Date(task.fecha_limite) : undefined);
       
       // Load saved drive link for this task
-      const savedDriveLink = localStorage.getItem(`task_drive_${task.task_id}`);
+      const savedDriveLink = localStorage.getItem(`task_drive_${task.id}`);
       setDriveLink(savedDriveLink || '');
     }
   }, [task]);
@@ -116,10 +116,10 @@ export default function TaskEditModal({ task, isOpen, onClose, onSave, userRole 
       
       // Save drive link separately
       if (driveLink) {
-        localStorage.setItem(`task_drive_${task.task_id}`, driveLink);
+        localStorage.setItem(`task_drive_${task.id}`, driveLink);
       }
       
-      onSave(task.task_id, saveData);
+      onSave(task.id, saveData);
       onClose();
     }
   };
@@ -362,7 +362,7 @@ export default function TaskEditModal({ task, isOpen, onClose, onSave, userRole 
                 <span className="font-medium">Responsable actual:</span> {task.responsable_nombre}
               </div>
               <div>
-                <span className="font-medium">ID de tarea:</span> {task.task_id}
+                <span className="font-medium">ID de tarea:</span> {task.id}
               </div>
             </div>
           </div>

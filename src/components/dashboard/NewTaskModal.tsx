@@ -66,39 +66,6 @@ export default function NewTaskModal({ isOpen, onClose, onSave, caseId }: NewTas
     setIsCalendarOpen(false);
   };
 
-  const handleSave = async () => {
-    if (formData.titulo && formData.responsable && caseId) {
-      setLoading(true);
-      try {
-        // Create task in Supabase
-        const success = await dbService.createTarea(
-          caseId,
-          formData.responsable,
-          formData.titulo,
-          formData.descripcion
-        );
-
-        if (success) {
-          // Reset form
-          setFormData({
-            titulo: '',
-            descripcion: '',
-            responsable: clientId || '',
-            fecha_limite: ''
-          });
-          setSelectedDate(undefined);
-          
-          onSave();
-          onClose();
-        } else {
-          alert('Error al crear la tarea. Por favor intente nuevamente.');
-        }
-      } catch (error) {
-        console.error('Error creating task:', error);
-        alert('Error al crear la tarea. Por favor intente nuevamente.');
-      } finally {
-        setLoading(false);
-      }
     }
   };
 
