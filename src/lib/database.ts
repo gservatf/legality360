@@ -362,7 +362,70 @@ class DatabaseService {
     }
   }
 
+  async updateCaso(casoId: string, data: Partial<Caso>): Promise<{ data: Caso | null; error: any }> {
+    try {
+      const { data: updatedCaso, error } = await supabase
+        .from('casos')
+        .update(data)
+        .eq('id', casoId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating caso:', error)
+        return { data: null, error }
+      }
+
+      return { data: updatedCaso, error: null }
+    } catch (error) {
+      console.error('Error in updateCaso:', error)
+      return { data: null, error }
+    }
+  }
+
+  async deleteCaso(casoId: string): Promise<{ data: boolean; error: any }> {
+    try {
+      const { error } = await supabase
+        .from('casos')
+        .delete()
+        .eq('id', casoId)
+
+      if (error) {
+        console.error('Error deleting caso:', error)
+        return { data: false, error }
+      }
+
+      return { data: true, error: null }
+    } catch (error) {
+      console.error('Error in deleteCaso:', error)
+      return { data: false, error }
+    }
+  }
+
   // Task management
+  async getAllTareas(): Promise<{ data: Tarea[]; error: any }> {
+    try {
+      const { data, error } = await supabase
+        .from('tareas')
+        .select(`
+          *,
+          caso:casos(*),
+          asignado:profiles(*)
+        `)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching all tareas:', error)
+        return { data: [], error }
+      }
+
+      return { data: data || [], error: null }
+    } catch (error) {
+      console.error('Error in getAllTareas:', error)
+      return { data: [], error }
+    }
+  }
+
   async getTareasByUser(userId: string): Promise<Tarea[]> {
     try {
       const { data, error } = await supabase
@@ -386,27 +449,77 @@ class DatabaseService {
     }
   }
 
-  async createTarea(casoId: string, asignadoA: string, titulo: string, descripcion?: string): Promise<boolean> {
+  async createTarea(casoId: string, asignadoA: string, titulo: string, descripcion: string, fechaLimite?: string): Promise<{ data: Tarea | null; error: any }> {
     try {
-      const { error } = await supabase
+      const insertData: any = {
+        caso_id: casoId,
+        asignado_a: asignadoA,
+        titulo,
+        descripcion,
+        estado: 'pendiente'
+      }
+
+      if (fechaLimite) {
+        insertData.fecha_limite = fechaLimite
+      }
+
+      const { data, error } = await supabase
         .from('tareas')
-        .insert([{
-          caso_id: casoId,
-          asignado_a: asignadoA,
-          titulo,
-          descripcion,
-          estado: 'pendiente'
-        }])
+        .insert([insertData])
+        .select()
+        .single()
 
       if (error) {
         console.error('Error creating tarea:', error)
-        return false
+        return { data: null, error }
       }
 
-      return true
+      return { data, error: null }
     } catch (error) {
       console.error('Error in createTarea:', error)
-      return false
+      return { data: null, error }
+    }
+  }
+
+  async updateTarea(tareaId: string, data: Partial<Tarea>): Promise<{ data: Tarea | null; error: any }> {
+    try {
+      const { data: updatedTarea, error } = await supabase
+        .from('tareas')
+        .update(data)
+        .eq('id', tareaId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating tarea:', error)
+        return { data: null, error }
+      }
+
+      return { data: updatedTarea, error: null }
+    } catch (error) {
+      console.error('Error in updateTarea:', error)
+      return { data: null, error }
+    }
+  }
+
+  async updateTareaStatus(tareaId: string, estado: 'pendiente' | 'en_progreso' | 'completada'): Promise<{ data: Tarea | null; error: any }> {
+    try {
+      const { data, error } = await supabase
+        .from('tareas')
+        .update({ estado })
+        .eq('id', tareaId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating tarea status:', error)
+        return { data: null, error }
+      }
+
+      return { data, error: null }
+    } catch (error) {
+      console.error('Error in updateTareaStatus:', error)
+      return { data: null, error }
     }
   }
 
@@ -426,6 +539,25 @@ class DatabaseService {
     } catch (error) {
       console.error('Error in updateTareaEstado:', error)
       return false
+    }
+  }
+
+  async deleteTarea(tareaId: string): Promise<{ data: boolean; error: any }> {
+    try {
+      const { error } = await supabase
+        .from('tareas')
+        .delete()
+        .eq('id', tareaId)
+
+      if (error) {
+        console.error('Error deleting tarea:', error)
+        return { data: false, error }
+      }
+
+      return { data: true, error: null }
+    } catch (error) {
+      console.error('Error in deleteTarea:', error)
+      return { data: false, error }
     }
   }
 
