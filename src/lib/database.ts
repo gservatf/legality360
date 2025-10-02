@@ -1,8 +1,10 @@
 import { supabase } from './supabase'
+import type { Profile, Empresa, Caso, Tarea, ProfileWithTaskCount, CasoWithDetails } from './supabase'
 
 class DatabaseService {
-  private channels: Map<string, RealtimeChannel> = new Map()
-  // Profile management with role-based access
+  // -----------------------------
+  // Profiles
+  // -----------------------------
   async getAllProfiles(): Promise<Profile[]> {
     try {
       const { data, error } = await supabase
@@ -10,42 +12,34 @@ class DatabaseService {
         .select('*')
         .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('Error fetching all profiles:', error)
-        return []
-      }
-
+      if (error) throw error
       return data || []
-    } catch (error) {
-      console.error('Error in getAllProfiles:', error)
+    } catch (err) {
+      console.error('Error in getAllProfiles:', err)
       return []
     }
   }
 
   async getAllProfilesWithTaskCounts(): Promise<ProfileWithTaskCount[]> {
     try {
-      // First get all profiles
       const profiles = await this.getAllProfiles()
-      
-      // Then get task counts for each user
       const profilesWithCounts = await Promise.all(
         profiles.map(async (profile) => {
-          const { data: taskCount } = await supabase
+          const { count } = await supabase
             .from('tareas')
-            .select('id', { count: 'exact' })
+            .select('*', { count: 'exact', head: true })
             .eq('asignado_a', profile.id)
             .eq('estado', 'pendiente')
 
           return {
             ...profile,
-            tareas_pendientes: taskCount?.length || 0
+            tareas_pendientes: count || 0
           }
         })
       )
-
       return profilesWithCounts
-    } catch (error) {
-      console.error('Error in getAllProfilesWithTaskCounts:', error)
+    } catch (err) {
+      console.error('Error in getAllProfilesWithTaskCounts:', err)
       return []
     }
   }
@@ -58,194 +52,131 @@ class DatabaseService {
         .eq('role', 'pending')
         .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('Error fetching pending users:', error)
-        return []
-      }
-
+      if (error) throw error
       return data || []
-    } catch (error) {
-      console.error('Error in getPendingUsers:', error)
+    } catch (err) {
+      console.error('Error in getPendingUsers:', err)
       return []
     }
   }
 
   async updateProfileRole(userId: string, newRole: Profile['role']): Promise<boolean> {
     try {
-      console.log('Updating user role:', userId, 'to', newRole)
-      
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('profiles')
-        .update({ 
+        .update({
           role: newRole,
           updated_at: new Date().toISOString()
         })
         .eq('id', userId)
-        .select()
 
-      if (error) {
-        console.error('Error updating profile role:', error)
-        return false
-      }
-
-      console.log('Profile role updated successfully:', data)
+      if (error) throw error
       return true
-    } catch (error) {
-      console.error('Error in updateProfileRole:', error)
+    } catch (err) {
+      console.error('Error in updateProfileRole:', err)
       return false
     }
   }
 
-  // Dashboard stats with role-based filtering
+  // -----------------------------
+  // Dashboard stats
+  // -----------------------------
   async getDashboardStats(userId?: string): Promise<any> {
+    const stats = {
+      total_usuarios: 0,
+      usuarios_pendientes: 0,
+      total_empresas: 0,
+      total_casos: 0,
+      casos_activos: 0,
+      total_tareas: 0,
+      tareas_pendientes: 0,
+      mis_tareas_pendientes: 0
+    }
+
     try {
-      const stats = {
-        total_usuarios: 0,
-        usuarios_pendientes: 0,
-        total_empresas: 0,
-        total_casos: 0,
-        casos_activos: 0,
-        total_tareas: 0,
-        tareas_pendientes: 0,
-        mis_tareas_pendientes: 0
-      }
-
-      // Get user counts (admin only)
-      const { data: users } = await supabase
-        .from('profiles')
-        .select('role', { count: 'exact' })
-
+      const { data: users } = await supabase.from('profiles').select('role')
       if (users) {
         stats.total_usuarios = users.length
-        stats.usuarios_pendientes = users.filter(u => u.role === 'pending').length
+        stats.usuarios_pendientes = users.filter((u) => u.role === 'pending').length
       }
 
-      // Get company count
-      const { data: empresas } = await supabase
-        .from('empresas')
-        .select('id', { count: 'exact' })
-
+      const { data: empresas } = await supabase.from('empresas').select('id')
       stats.total_empresas = empresas?.length || 0
 
-      // Get case counts
-      const { data: casos } = await supabase
-        .from('casos')
-        .select('estado', { count: 'exact' })
-
+      const { data: casos } = await supabase.from('casos').select('estado')
       if (casos) {
         stats.total_casos = casos.length
-        stats.casos_activos = casos.filter(c => c.estado === 'activo').length
+        stats.casos_activos = casos.filter((c) => c.estado === 'activo').length
       }
 
-      // Get task counts
-      const { data: tareas } = await supabase
-        .from('tareas')
-        .select('estado, asignado_a', { count: 'exact' })
-
+      const { data: tareas } = await supabase.from('tareas').select('estado, asignado_a')
       if (tareas) {
         stats.total_tareas = tareas.length
-        stats.tareas_pendientes = tareas.filter(t => t.estado === 'pendiente').length
-        
+        stats.tareas_pendientes = tareas.filter((t) => t.estado === 'pendiente').length
         if (userId) {
-          stats.mis_tareas_pendientes = tareas.filter(t => 
-            t.asignado_a === userId && t.estado === 'pendiente'
+          stats.mis_tareas_pendientes = tareas.filter(
+            (t) => t.asignado_a === userId && t.estado === 'pendiente'
           ).length
         }
       }
 
       return stats
-    } catch (error) {
-      console.error('Error getting dashboard stats:', error)
-      return {
-        total_usuarios: 0,
-        usuarios_pendientes: 0,
-        total_empresas: 0,
-        total_casos: 0,
-        casos_activos: 0,
-        total_tareas: 0,
-        tareas_pendientes: 0,
-        mis_tareas_pendientes: 0
-      }
+    } catch (err) {
+      console.error('Error in getDashboardStats:', err)
+      return stats
     }
   }
 
-  // Company management
+  // -----------------------------
+  // Empresas
+  // -----------------------------
   async getAllEmpresas(): Promise<Empresa[]> {
     try {
-      const { data, error } = await supabase
-        .from('empresas')
-        .select('*')
-        .order('nombre', { ascending: true })
-
-      if (error) {
-        console.error('Error fetching empresas:', error)
-        return []
-      }
-
+      const { data, error } = await supabase.from('empresas').select('*').order('nombre')
+      if (error) throw error
       return data || []
-    } catch (error) {
-      console.error('Error in getAllEmpresas:', error)
+    } catch (err) {
+      console.error('Error in getAllEmpresas:', err)
       return []
     }
   }
 
   async createEmpresa(nombre: string): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('empresas')
-        .insert([{ nombre }])
-
-      if (error) {
-        console.error('Error creating empresa:', error)
-        return false
-      }
-
+      const { error } = await supabase.from('empresas').insert([{ nombre }])
+      if (error) throw error
       return true
-    } catch (error) {
-      console.error('Error in createEmpresa:', error)
+    } catch (err) {
+      console.error('Error in createEmpresa:', err)
       return false
     }
   }
 
   async updateEmpresa(id: string, nombre: string): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('empresas')
-        .update({ nombre })
-        .eq('id', id)
-
-      if (error) {
-        console.error('Error updating empresa:', error)
-        return false
-      }
-
+      const { error } = await supabase.from('empresas').update({ nombre }).eq('id', id)
+      if (error) throw error
       return true
-    } catch (error) {
-      console.error('Error in updateEmpresa:', error)
+    } catch (err) {
+      console.error('Error in updateEmpresa:', err)
       return false
     }
   }
 
   async deleteEmpresa(id: string): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('empresas')
-        .delete()
-        .eq('id', id)
-
-      if (error) {
-        console.error('Error deleting empresa:', error)
-        return false
-      }
-
+      const { error } = await supabase.from('empresas').delete().eq('id', id)
+      if (error) throw error
       return true
-    } catch (error) {
-      console.error('Error in deleteEmpresa:', error)
+    } catch (err) {
+      console.error('Error in deleteEmpresa:', err)
       return false
     }
   }
 
-  // Case management with role-based access
+  // -----------------------------
+  // Casos
+  // -----------------------------
   async getAllCasosWithDetails(): Promise<CasoWithDetails[]> {
     try {
       const { data, error } = await supabase
@@ -254,40 +185,25 @@ class DatabaseService {
           *,
           empresa:empresas(*),
           cliente:profiles!casos_cliente_id_fkey(*),
-          asignaciones:asignaciones(
-            *,
-            usuario:profiles(*)
-          )
+          asignaciones:asignaciones(*, usuario:profiles(*)),
+          tareas:tareas(id, estado)
         `)
         .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('Error fetching casos with details:', error)
-        return []
-      }
+      if (error) throw error
 
-      // Get task counts for each case
-      const casosWithCounts = await Promise.all(
-        (data || []).map(async (caso) => {
-          const { data: taskCounts } = await supabase
-            .from('tareas')
-            .select('estado', { count: 'exact' })
-            .eq('caso_id', caso.id)
-
-          const tareas_count = taskCounts?.length || 0
-          const tareas_pendientes = taskCounts?.filter(t => t.estado === 'pendiente').length || 0
-
-          return {
-            ...caso,
-            tareas_count,
-            tareas_pendientes
-          }
-        })
-      )
+      const casosWithCounts = (data || []).map((caso: any) => {
+        const tareas = caso.tareas || []
+        return {
+          ...caso,
+          tareas_count: tareas.length,
+          tareas_pendientes: tareas.filter((t: any) => t.estado === 'pendiente').length
+        }
+      })
 
       return casosWithCounts as CasoWithDetails[]
-    } catch (error) {
-      console.error('Error in getAllCasosWithDetails:', error)
+    } catch (err) {
+      console.error('Error in getAllCasosWithDetails:', err)
       return []
     }
   }
@@ -300,267 +216,123 @@ class DatabaseService {
           *,
           empresa:empresas(*),
           cliente:profiles!casos_cliente_id_fkey(*),
-          asignaciones:asignaciones(
-            *,
-            usuario:profiles(*)
-          )
+          asignaciones:asignaciones(*, usuario:profiles(*)),
+          tareas:tareas(id, estado)
         `)
 
-      // Filter based on user role
       if (userRole === 'cliente') {
         query = query.eq('cliente_id', userId)
       } else if (userRole === 'analista' || userRole === 'abogado') {
-        // Get cases where user is assigned
         const { data: userAssignments } = await supabase
           .from('asignaciones')
           .select('caso_id')
           .eq('usuario_id', userId)
 
-        if (userAssignments && userAssignments.length > 0) {
-          const casoIds = userAssignments.map(a => a.caso_id)
+        if (userAssignments?.length) {
+          const casoIds = userAssignments.map((a) => a.caso_id)
           query = query.in('id', casoIds)
         } else {
           return []
         }
       }
-      // Admin sees all cases (no additional filter)
 
       const { data, error } = await query.order('created_at', { ascending: false })
+      if (error) throw error
 
-      if (error) {
-        console.error('Error fetching user cases:', error)
-        return []
-      }
+      const casosWithCounts = (data || []).map((caso: any) => {
+        const tareas = caso.tareas || []
+        return {
+          ...caso,
+          tareas_count: tareas.length,
+          tareas_pendientes: tareas.filter((t: any) => t.estado === 'pendiente').length
+        }
+      })
 
-      return data as CasoWithDetails[] || []
-    } catch (error) {
-      console.error('Error in getCasosByUser:', error)
+      return casosWithCounts as CasoWithDetails[]
+    } catch (err) {
+      console.error('Error in getCasosByUser:', err)
       return []
     }
   }
 
   async createCaso(empresaId: string, clienteId: string, titulo: string): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('casos')
-        .insert([{
+      const { error } = await supabase.from('casos').insert([
+        {
           empresa_id: empresaId,
           cliente_id: clienteId,
           titulo,
           estado: 'activo'
-        }])
-
-      if (error) {
-        console.error('Error creating caso:', error)
-        return false
-      }
-
+        }
+      ])
+      if (error) throw error
       return true
-    } catch (error) {
-      console.error('Error in createCaso:', error)
+    } catch (err) {
+      console.error('Error in createCaso:', err)
       return false
     }
   }
 
-
-    try {
-      const { error } = await supabase
-        .from('casos')
-        .delete()
-        .eq('id', casoId)
-
-      if (error) {
-        console.error('Error deleting caso:', error)
-
-        return false
-      }
-
-      return true
-    } catch (error) {
-      return false
-    }
-  }
-
-  // Task management
-    try {
-      const { data, error } = await supabase
-        .from('tareas')
-        .select(`
-          *,
-          caso:casos(*),
-          asignado:profiles(*)
-        `)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-
+  // -----------------------------
+  // Tareas
+  // -----------------------------
   async getTareasByUser(userId: string): Promise<Tarea[]> {
     try {
       const { data, error } = await supabase
         .from('tareas')
-        .select(`
-          *,
-          caso:casos(*)
-        `)
+        .select(`*, caso:casos(*)`)
         .eq('asignado_a', userId)
         .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('Error fetching user tasks:', error)
-        return []
-      }
-
+      if (error) throw error
       return data || []
-    } catch (error) {
-      console.error('Error in getTareasByUser:', error)
+    } catch (err) {
+      console.error('Error in getTareasByUser:', err)
       return []
     }
   }
 
-  async createTarea(casoId: string, asignadoA: string, titulo: string, descripcion: string, fechaLimite?: string): Promise<{ data: Tarea | null; error: any }> {
+  async createTarea(
+    casoId: string,
+    asignadoA: string,
+    titulo: string,
+    descripcion?: string
+  ): Promise<boolean> {
     try {
-      const insertData: any = {
-        caso_id: casoId,
-        asignado_a: asignadoA,
-        titulo,
-        descripcion,
-        estado: 'pendiente'
-      }
-
-      if (fechaLimite) {
-        insertData.fecha_limite = fechaLimite
-      }
-
-      const { data, error } = await supabase
-        .from('tareas')
-        .insert([insertData])
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Error creating tarea:', error)
-        return { data: null, error }
-      }
-
-      return { data, error: null }
-    } catch (error) {
-      console.error('Error in createTarea:', error)
-      return { data: null, error }
-    }
-  }
-
-  async updateTarea(tareaId: string, data: Partial<Tarea>): Promise<{ data: Tarea | null; error: any }> {
-    try {
-      const { data: updatedTarea, error } = await supabase
-        .from('tareas')
-        .update(data)
-        .eq('id', tareaId)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Error updating tarea:', error)
-        return { data: null, error }
-      }
-
-      return { data: updatedTarea, error: null }
-    } catch (error) {
-      console.error('Error in updateTarea:', error)
-      return { data: null, error }
-    }
-  }
-
-  async updateTareaStatus(tareaId: string, estado: 'pendiente' | 'en_progreso' | 'completada'): Promise<{ data: Tarea | null; error: any }> {
-    try {
-      const { data, error } = await supabase
-        .from('tareas')
-        .update({ estado })
-        .eq('id', tareaId)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Error updating tarea status:', error)
-        return { data: null, error }
-      }
-
-      return { data, error: null }
-    } catch (error) {
-      console.error('Error in updateTareaStatus:', error)
-      return { data: null, error }
-    }
-  }
-
-  async updateTareaEstado(tareaId: string, nuevoEstado: 'pendiente' | 'en_progreso' | 'completada'): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('tareas')
-        .update({ estado: nuevoEstado })
-        .eq('id', tareaId)
-
-      if (error) {
-        console.error('Error updating tarea estado:', error)
-        return false
-      }
-
+      const { error } = await supabase.from('tareas').insert([
+        {
+          caso_id: casoId,
+          asignado_a: asignadoA,
+          titulo,
+          descripcion,
+          estado: 'pendiente'
+        }
+      ])
+      if (error) throw error
       return true
-    } catch (error) {
-      console.error('Error in updateTareaEstado:', error)
+    } catch (err) {
+      console.error('Error in createTarea:', err)
       return false
     }
   }
 
-  async updateTarea(tareaId: string, titulo: string, descripcion?: string, casoId?: string, asignadoA?: string, estado?: 'pendiente' | 'en_progreso' | 'completada'): Promise<boolean> {
+  async updateTareaEstado(
+    tareaId: string,
+    nuevoEstado: 'pendiente' | 'en_progreso' | 'completada'
+  ): Promise<boolean> {
     try {
-      const updateData: {
-        titulo: string
-        descripcion?: string | null
-        caso_id?: string
-        asignado_a?: string
-        estado?: 'pendiente' | 'en_progreso' | 'completada'
-      } = { titulo }
-      if (descripcion !== undefined) updateData.descripcion = descripcion
-      if (casoId) updateData.caso_id = casoId
-      if (asignadoA) updateData.asignado_a = asignadoA
-      if (estado) updateData.estado = estado
-
-      const { error } = await supabase
-        .from('tareas')
-        .update(updateData)
-        .eq('id', tareaId)
-
-      if (error) {
-        console.error('Error updating tarea:', error)
-        return false
-      }
-
+      const { error } = await supabase.from('tareas').update({ estado: nuevoEstado }).eq('id', tareaId)
+      if (error) throw error
       return true
-    } catch (error) {
-      console.error('Error in updateTarea:', error)
+    } catch (err) {
+      console.error('Error in updateTareaEstado:', err)
       return false
     }
   }
 
-  async deleteTarea(tareaId: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('tareas')
-        .delete()
-        .eq('id', tareaId)
-
-      if (error) {
-        console.error('Error deleting tarea:', error)
-        return false
-      }
-
-      return true
-    } catch (error) {
-      console.error('Error in deleteTarea:', error)
-      return false
-    }
-  }
-
-  // Solicitud de horas extra
+  // -----------------------------
+  // Horas Extra
+  // -----------------------------
   async solicitarHorasExtra({
     caso_id,
     horas_abogado,
@@ -577,29 +349,16 @@ class DatabaseService {
     try {
       const { data, error } = await supabase
         .from('horas_extra')
-        .insert([{
-          caso_id,
-          horas_abogado,
-          horas_analista,
-          estado,
-          solicitante_id
-        }])
+        .insert([{ caso_id, horas_abogado, horas_analista, estado, solicitante_id }])
         .select()
         .single()
 
-      if (error) {
-        console.error('Error solicitando horas extra:', error)
-        return null
-      }
-
+      if (error) throw error
       return data
-    } catch (error) {
-      console.error('Error en solicitarHorasExtra:', error)
+    } catch (err) {
+      console.error('Error in solicitarHorasExtra:', err)
       return null
     }
-  }
-
-
   }
 }
 
