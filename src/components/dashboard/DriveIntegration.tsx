@@ -9,7 +9,7 @@ export default function DriveIntegration() {
   const clientId = authService.getCurrentClientId();
   const cases = clientId ? mockDB.getCasesByClientId(clientId) : [];
   const currentCase = cases[0]; // For demo, use first case
-  const documents = currentCase ? mockDB.getDocumentsByCaseId(currentCase.caso_id) : [];
+  const documents = currentCase ? mockDB.getDocumentsByCaseId(currentCase.id) : [];
 
   const handleOpenDriveFolder = () => {
     if (currentCase?.carpeta_drive_url) {

@@ -12,12 +12,12 @@ export default function Chat() {
   const clientId = authService.getCurrentClientId();
   const cases = clientId ? mockDB.getCasesByClientId(clientId) : [];
   const currentCase = cases[0]; // For demo, use first case
-  const messages = currentCase ? mockDB.getChatMessagesByCaseId(currentCase.caso_id) : [];
+  const messages = currentCase ? mockDB.getChatMessagesByCaseId(currentCase.id) : [];
 
   const handleSendMessage = () => {
     if (newMessage.trim() && currentCase) {
       mockDB.addChatMessage({
-        caso_id: currentCase.caso_id,
+        caso_id: currentCase.id,
         sender: 'cliente',
         sender_name: authService.getCurrentUser()?.nombre || 'Cliente',
         mensaje: newMessage.trim(),

@@ -12,7 +12,7 @@ export default function Reports() {
   const clientId = authService.getCurrentClientId();
   const cases = clientId ? mockDB.getCasesByClientId(clientId) : [];
   const currentCase = cases[0]; // For demo, use first case
-  const reports = currentCase ? mockDB.getReportsByCaseId(currentCase.caso_id) : [];
+  const reports = currentCase ? mockDB.getReportsByCaseId(currentCase.id) : [];
 
   const reportTypes = [
     { value: 'riesgos', label: 'Reporte de Riesgos' },

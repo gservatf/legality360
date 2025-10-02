@@ -76,7 +76,7 @@ export default function NewTaskModal({ isOpen, onClose, onSave, caseId }: NewTas
   const handleSave = () => {
     if (formData.titulo && formData.responsable && formData.fecha_limite) {
       const newTask: Task = {
-        task_id: `task_${Date.now()}`,
+        id: `task_${Date.now()}`,
         caso_id: caseId,
         titulo: formData.titulo,
         descripcion: formData.descripcion,
