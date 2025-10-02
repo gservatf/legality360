@@ -1,4 +1,6 @@
 import { supabase } from './supabase'
+import type { Profile, Empresa, Caso, Tarea, ProfileWithTaskCount, CasoWithDetails } from './supabase'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 
 class DatabaseService {
   private channels: Map<string, RealtimeChannel> = new Map()
@@ -362,7 +364,7 @@ class DatabaseService {
     }
   }
 
-
+  async deleteCaso(casoId: string): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('casos')
@@ -371,29 +373,17 @@ class DatabaseService {
 
       if (error) {
         console.error('Error deleting caso:', error)
-
         return false
       }
 
       return true
     } catch (error) {
+      console.error('Error in deleteCaso:', error)
       return false
     }
   }
 
   // Task management
-    try {
-      const { data, error } = await supabase
-        .from('tareas')
-        .select(`
-          *,
-          caso:casos(*),
-          asignado:profiles(*)
-        `)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-
   async getTareasByUser(userId: string): Promise<Tarea[]> {
     try {
       const { data, error } = await supabase
@@ -510,37 +500,6 @@ class DatabaseService {
     }
   }
 
-  async updateTarea(tareaId: string, titulo: string, descripcion?: string, casoId?: string, asignadoA?: string, estado?: 'pendiente' | 'en_progreso' | 'completada'): Promise<boolean> {
-    try {
-      const updateData: {
-        titulo: string
-        descripcion?: string | null
-        caso_id?: string
-        asignado_a?: string
-        estado?: 'pendiente' | 'en_progreso' | 'completada'
-      } = { titulo }
-      if (descripcion !== undefined) updateData.descripcion = descripcion
-      if (casoId) updateData.caso_id = casoId
-      if (asignadoA) updateData.asignado_a = asignadoA
-      if (estado) updateData.estado = estado
-
-      const { error } = await supabase
-        .from('tareas')
-        .update(updateData)
-        .eq('id', tareaId)
-
-      if (error) {
-        console.error('Error updating tarea:', error)
-        return false
-      }
-
-      return true
-    } catch (error) {
-      console.error('Error in updateTarea:', error)
-      return false
-    }
-  }
-
   async deleteTarea(tareaId: string): Promise<boolean> {
     try {
       const { error } = await supabase
@@ -597,9 +556,6 @@ class DatabaseService {
       console.error('Error en solicitarHorasExtra:', error)
       return null
     }
-  }
-
-
   }
 }
 
