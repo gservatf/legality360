@@ -29,8 +29,17 @@ export default function TaskChatModal({ task, isOpen, onClose, userRole }: TaskC
   const [newMessage, setNewMessage] = useState('');
   const [driveLink, setDriveLink] = useState('');
   const [showDriveLinkInput, setShowDriveLinkInput] = useState(false);
+  const [currentUserName, setCurrentUserName] = useState('Usuario');
 
-  const currentUser = authService.getCurrentUser();
+  useEffect(() => {
+    const loadUserName = async () => {
+      const profile = await authService.getCurrentProfile();
+      if (profile) {
+        setCurrentUserName(profile.full_name || profile.email);
+      }
+    };
+    loadUserName();
+  }, []);
 
   useEffect(() => {
     if (task) {
@@ -67,12 +76,12 @@ export default function TaskChatModal({ task, isOpen, onClose, userRole }: TaskC
   }, [task]);
 
   const handleSendMessage = () => {
-    if (newMessage.trim() && task && currentUser) {
+    if (newMessage.trim() && task) {
       const message: TaskChatMessage = {
         id: `msg_${Date.now()}`,
         task_id: task.task_id,
         sender: userRole,
-        sender_name: currentUser.nombre,
+        sender_name: currentUserName,
         message: newMessage.trim(),
         timestamp: new Date().toISOString(),
         type: 'message'
@@ -86,12 +95,12 @@ export default function TaskChatModal({ task, isOpen, onClose, userRole }: TaskC
   };
 
   const handleAddDriveLink = () => {
-    if (driveLink.trim() && task && currentUser) {
+    if (driveLink.trim() && task) {
       const message: TaskChatMessage = {
         id: `msg_${Date.now()}`,
         task_id: task.task_id,
         sender: userRole,
-        sender_name: currentUser.nombre,
+        sender_name: currentUserName,
         message: `He compartido un archivo: ${driveLink}`,
         timestamp: new Date().toISOString(),
         type: 'file_upload'
