@@ -87,7 +87,40 @@ await dbService.unsubscribeAll()
 
 ## Uso en Componentes React
 
-### Ejemplo Básico
+### Ejemplo Básico (usando el hook personalizado)
+
+**Recomendado**: Usa los hooks personalizados en `src/hooks/useRealtimeSubscriptions.ts`:
+
+```typescript
+import { useState, useCallback, useEffect } from 'react'
+import { dbService } from '@/lib/database'
+import { useCasosSubscription } from '@/hooks/useRealtimeSubscriptions'
+
+function CasosComponent() {
+  const [casos, setCasos] = useState([])
+  
+  const loadCasos = useCallback(async () => {
+    const data = await dbService.getAllCasosWithDetails()
+    setCasos(data)
+  }, [])
+  
+  // Cargar datos iniciales
+  useEffect(() => {
+    loadCasos()
+  }, [loadCasos])
+  
+  // Suscribirse a cambios en tiempo real (con limpieza automática)
+  useCasosSubscription(loadCasos)
+  
+  return (
+    <div>
+      {/* Tu JSX aquí */}
+    </div>
+  )
+}
+```
+
+### Ejemplo Básico (sin hook personalizado)
 
 ```typescript
 import { useEffect, useState } from 'react'
@@ -172,7 +205,56 @@ function TareasComponent() {
 }
 ```
 
-### Ejemplo: Múltiples Suscripciones
+### Ejemplo: Múltiples Suscripciones (usando el hook personalizado)
+
+**Recomendado**: Usa el hook `useRealtimeSubscriptions` para múltiples suscripciones:
+
+```typescript
+import { useState, useCallback, useEffect } from 'react'
+import { dbService } from '@/lib/database'
+import { useRealtimeSubscriptions } from '@/hooks/useRealtimeSubscriptions'
+
+function DashboardComponent() {
+  const [casos, setCasos] = useState([])
+  const [tareas, setTareas] = useState([])
+  
+  const refreshCasosSection = useCallback(async () => {
+    const data = await dbService.getAllCasosWithDetails()
+    setCasos(data)
+  }, [])
+  
+  const refreshTareasSection = useCallback(async () => {
+    const data = await dbService.getTareasByUser(userId)
+    setTareas(data)
+  }, [])
+  
+  const refreshMensajesSection = useCallback(() => {
+    console.log('Mensajes actualizados')
+    // Lógica para actualizar mensajes
+  }, [])
+  
+  // Cargar datos iniciales
+  useEffect(() => {
+    refreshCasosSection()
+    refreshTareasSection()
+  }, [refreshCasosSection, refreshTareasSection])
+  
+  // Suscribirse a múltiples tablas (con limpieza automática)
+  useRealtimeSubscriptions({
+    onCasoChange: refreshCasosSection,
+    onTareaChange: refreshTareasSection,
+    onMensajeChange: refreshMensajesSection
+  })
+  
+  return (
+    <div>
+      {/* Tu JSX aquí */}
+    </div>
+  )
+}
+```
+
+### Ejemplo: Múltiples Suscripciones (sin hook personalizado)
 
 ```typescript
 import { useEffect } from 'react'
