@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
-import type { Profile, Empresa, Caso, Tarea, ProfileWithTaskCount, CasoWithDetails, ChatMessage } from './supabase'
 
 class DatabaseService {
+  private channels: Map<string, RealtimeChannel> = new Map()
   // Profile management with role-based access
   async getAllProfiles(): Promise<Profile[]> {
     try {
@@ -491,17 +491,7 @@ class DatabaseService {
     }
   }
 
-        return []
-      }
 
-      return data || []
-    } catch (error) {
-      return []
-    }
-  }
-
-      return null
-    }
   }
 }
 
