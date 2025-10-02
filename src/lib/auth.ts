@@ -1,17 +1,21 @@
 import { supabase } from './supabaseClient'
 import type { Session, User } from '@supabase/supabase-js'
 
+// -----------------------------
 // Types
+// -----------------------------
 export interface UserProfile {
   id: string
   email: string
   full_name: string
-  role: string
-  created_at: string
-  updated_at: string
+  role: 'pending' | 'cliente' | 'analista' | 'abogado' | 'admin'
+  created_at?: string
+  updated_at?: string
 }
 
+// -----------------------------
 // Get current session
+// -----------------------------
 export async function getCurrentSession(): Promise<Session | null> {
   try {
     const { data: { session }, error } = await supabase.auth.getSession()
@@ -26,7 +30,9 @@ export async function getCurrentSession(): Promise<Session | null> {
   }
 }
 
+// -----------------------------
 // Get current user
+// -----------------------------
 export async function getCurrentUser(): Promise<User | null> {
   try {
     const { data: { user }, error } = await supabase.auth.getUser()
@@ -41,7 +47,9 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 }
 
-// Get current profile from profiles table
+// -----------------------------
+// Get current profile
+// -----------------------------
 export async function getCurrentProfile(): Promise<UserProfile | null> {
   try {
     const user = await getCurrentUser()
@@ -54,9 +62,9 @@ export async function getCurrentProfile(): Promise<UserProfile | null> {
       .single()
 
     if (error) {
+      // Caso: el perfil aún no existe → lo creamos como pending
       if (error.code === 'PGRST116') {
-        // Profile doesn't exist, create it
-        const newProfile = {
+        const newProfile: UserProfile = {
           id: user.id,
           email: user.email || '',
           full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
@@ -73,11 +81,16 @@ export async function getCurrentProfile(): Promise<UserProfile | null> {
           console.error('Error creating profile:', createError.message)
           return null
         }
-
         return createdProfile
       }
+
       console.error('Error fetching profile:', error.message)
       return null
+    }
+
+    // BLOQUEO: si está pendiente, lo marcamos y el front lo redirige
+    if (data.role === 'pending') {
+      throw new Error('PENDING_ACCOUNT')
     }
 
     return data
@@ -87,35 +100,40 @@ export async function getCurrentProfile(): Promise<UserProfile | null> {
   }
 }
 
-// Sign in with email and password (no profile creation here)
-export async function signIn(email: string, password: string): Promise<{ user: User | null, profile: UserProfile | null, error: any }> {
+// -----------------------------
+// Sign in
+// -----------------------------
+export async function signIn(
+  email: string,
+  password: string
+): Promise<{ user: User | null, profile: UserProfile | null, error: any }> {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error || !data.user) {
-      return { user: null, profile: null, error };
+      return { user: null, profile: null, error }
     }
-    const user = data.user;
-    return { user, profile: null, error: null };
+    return { user: data.user, profile: null, error: null }
   } catch (err: any) {
-    return { user: null, profile: null, error: err };
+    return { user: null, profile: null, error: err }
   }
 }
 
-// Sign in with Google OAuth (no profile creation or user fetch here)
+// -----------------------------
+// Sign in with Google
+// -----------------------------
 export async function signInWithGoogle(): Promise<{ user: User | null, profile: UserProfile | null, error: any }> {
   try {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
-    if (error) {
-      return { user: null, profile: null, error };
-    }
-    // After OAuth, user/profile will be available after redirect
-    return { user: null, profile: null, error: null };
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' })
+    if (error) return { user: null, profile: null, error }
+    return { user: null, profile: null, error: null }
   } catch (err: any) {
-    return { user: null, profile: null, error: err };
+    return { user: null, profile: null, error: err }
   }
 }
 
+// -----------------------------
 // Sign out
+// -----------------------------
 export async function signOut() {
   try {
     const { error } = await supabase.auth.signOut()
@@ -130,7 +148,9 @@ export async function signOut() {
   }
 }
 
-// Sign up with email and password, and create profile with role 'pending'
+// -----------------------------
+// Sign up (always as pending)
+// -----------------------------
 export async function signUp(
   email: string,
   password: string,
@@ -141,43 +161,41 @@ export async function signUp(
       email,
       password,
       options: {
-        data: {
-          full_name: fullName
-        }
+        data: { full_name: fullName }
       }
-    });
+    })
 
     if (error || !data.user) {
-      return { user: null, profile: null, error };
+      return { user: null, profile: null, error }
     }
 
-    const user = data.user;
-
-    // Create profile in 'profiles' table
-    const newProfile = {
+    const user = data.user
+    const newProfile: UserProfile = {
       id: user.id,
       email: user.email || '',
       full_name: fullName,
       role: 'pending'
-    };
+    }
 
     const { data: createdProfile, error: createError } = await supabase
       .from('profiles')
       .insert([newProfile])
       .select()
-      .single();
+      .single()
 
     if (createError) {
-      return { user, profile: null, error: createError };
+      return { user, profile: null, error: createError }
     }
 
-    return { user, profile: createdProfile, error: null };
+    return { user, profile: createdProfile, error: null }
   } catch (err: any) {
-    return { user: null, profile: null, error: err };
+    return { user: null, profile: null, error: err }
   }
 }
 
-// Export authService object for backward compatibility
+// -----------------------------
+// Utilities
+// -----------------------------
 export const authService = {
   getCurrentSession,
   getCurrentUser,
@@ -188,7 +206,11 @@ export const authService = {
   signUp
 }
 
-// Devuelve true si el perfil tiene rol 'cliente'
+// Reglas de acceso
 export function canAccessClientPanel(profile: UserProfile | null): boolean {
-  return profile?.role === 'cliente';
+  return profile?.role === 'cliente'
+}
+
+export function isAdmin(profile: UserProfile | null): boolean {
+  return profile?.role === 'admin'
 }
