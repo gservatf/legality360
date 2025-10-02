@@ -71,3 +71,14 @@ export interface CasoWithDetails extends Caso {
   tareas_count?: number
   tareas_pendientes?: number
 }
+
+export interface ChatMessage {
+  id: string
+  caso_id: string
+  sender: 'cliente' | 'analista'
+  sender_name: string
+  mensaje: string
+  fecha_envio: string
+  leido: boolean
+  created_at?: string
+}

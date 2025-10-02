@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Profile, Empresa, Caso, Tarea, ProfileWithTaskCount, CasoWithDetails } from './supabase'
+import type { Profile, Empresa, Caso, Tarea, ProfileWithTaskCount, CasoWithDetails, ChatMessage } from './supabase'
 
 class DatabaseService {
   // Profile management with role-based access
@@ -429,6 +429,29 @@ class DatabaseService {
     }
   }
 
+  async updateTask(taskId: string, data: Partial<Tarea>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('tareas')
+        .update(data)
+        .eq('id', taskId)
+
+      if (error) {
+        console.error('Error updating task:', error)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error in updateTask:', error)
+      return false
+    }
+  }
+
+  async updateTaskStatus(taskId: string, estado: 'pendiente' | 'en_progreso' | 'completada'): Promise<boolean> {
+    return this.updateTareaEstado(taskId, estado)
+  }
+
   // Solicitud de horas extra
   async solicitarHorasExtra({
     caso_id,
@@ -464,6 +487,47 @@ class DatabaseService {
       return data
     } catch (error) {
       console.error('Error en solicitarHorasExtra:', error)
+      return null
+    }
+  }
+
+  // Chat messages
+  async getChatMessagesByCaseId(casoId: string): Promise<ChatMessage[]> {
+    try {
+      const { data, error } = await supabase
+        .from('mensajes')
+        .select('*')
+        .eq('caso_id', casoId)
+        .order('fecha_envio', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching chat messages:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('Error in getChatMessagesByCaseId:', error)
+      return []
+    }
+  }
+
+  async addChatMessage(data: Omit<ChatMessage, 'id' | 'created_at'>): Promise<ChatMessage | null> {
+    try {
+      const { data: newMessage, error } = await supabase
+        .from('mensajes')
+        .insert([data])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error adding chat message:', error)
+        return null
+      }
+
+      return newMessage
+    } catch (error) {
+      console.error('Error in addChatMessage:', error)
       return null
     }
   }
