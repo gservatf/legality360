@@ -402,6 +402,26 @@ class DatabaseService {
     }
   }
 
+  // Helper method to update only the estado of a caso (used by components)
+  async updateCasoEstado(casoId: string, nuevoEstado: 'activo' | 'cerrado'): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('casos')
+        .update({ estado: nuevoEstado })
+        .eq('id', casoId)
+
+      if (error) {
+        console.error('Error updating caso estado:', error)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error in updateCasoEstado:', error)
+      return false
+    }
+  }
+
   // Task management
   async getAllTareas(): Promise<{ data: Tarea[]; error: any }> {
     try {
