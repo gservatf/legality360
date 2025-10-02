@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, User, Flag, CheckCircle2, Edit, Plus, Link, MessageCircle } from 'lucide-react';
 import { Task, TaskEditData } from '@/types/database';
-import { mockDB } from '@/lib/mockDatabase';
+import { dashboardDataService } from '@/lib/dashboardAdapter';
 import { authService } from '@/lib/auth';
 import TaskEditModal from './TaskEditModal';
 import NewTaskModal from './NewTaskModal';
@@ -16,13 +16,48 @@ export default function TaskKanban() {
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [cases, setCases] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  const clientId = authService.getCurrentClientId();
-  const currentUser = authService.getCurrentUser();
-  const userRole = currentUser?.role || 'cliente';
-  const cases = clientId ? mockDB.getCasesByClientId(clientId) : [];
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userRole, setUserRole] = useState<'cliente' | 'analista'>('cliente');
+
+  // Load data from Supabase
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        // Get current user profile from Supabase
+        const profile = await authService.getCurrentProfile();
+        if (profile) {
+          setCurrentUser(profile);
+          setUserRole(profile.role === 'analista' ? 'analista' : 'cliente');
+          
+          // For clients, use their profile ID as client ID
+          if (profile.role === 'cliente') {
+            setClientId(profile.id);
+            const fetchedCases = await dashboardDataService.getCasesByClientId(profile.id);
+            setCases(fetchedCases);
+            
+            if (fetchedCases.length > 0) {
+              const fetchedTasks = await dashboardDataService.getTasksByCaseId(fetchedCases[0].caso_id);
+              setTasks(fetchedTasks);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [refreshKey]);
+
   const currentCase = cases[0]; // For demo, use first case
-  const tasks = currentCase ? mockDB.getTasksByCaseId(currentCase.id) : [];
 
   const taskColumns = [
     { id: 'pendiente', title: 'Pendientes', color: 'bg-gray-50 border-gray-200' },
@@ -72,8 +107,9 @@ export default function TaskKanban() {
   };
 
   const handleTaskStatusChange = (taskId: string, newStatus: Task['estado']) => {
-    mockDB.updateTaskStatus(taskId, newStatus);
-    setRefreshKey(prev => prev + 1); // Force re-render
+    dashboardDataService.updateTaskStatus(taskId, newStatus).then(() => {
+      setRefreshKey(prev => prev + 1); // Force re-render
+    });
   };
 
   const handleEditTask = (task: Task) => {
@@ -87,10 +123,11 @@ export default function TaskKanban() {
   };
 
   const handleSaveTask = (taskId: string, taskData: TaskEditData) => {
-    mockDB.updateTask(taskId, taskData);
-    setIsEditModalOpen(false);
-    setSelectedTask(null);
-    setRefreshKey(prev => prev + 1); // Force re-render
+    dashboardDataService.updateTask(taskId, taskData).then(() => {
+      setIsEditModalOpen(false);
+      setSelectedTask(null);
+      setRefreshKey(prev => prev + 1); // Force re-render
+    });
   };
 
   const handleNewTask = () => {
@@ -131,7 +168,16 @@ export default function TaskKanban() {
           <p className="text-sm text-gray-600">Gestión de tareas en formato Kanban</p>
         </CardHeader>
         <CardContent key={refreshKey}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>Cargando tareas...</p>
+            </div>
+          ) : !currentCase ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>No hay casos activos</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {taskColumns.map(column => {
               const columnTasks = getTasksByStatus(column.id as Task['estado']);
               
@@ -269,6 +315,7 @@ export default function TaskKanban() {
               );
             })}
           </div>
+          )}
         </CardContent>
       </Card>
 

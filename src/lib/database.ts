@@ -491,43 +491,15 @@ class DatabaseService {
     }
   }
 
-  // Chat messages
-  async getChatMessagesByCaseId(casoId: string): Promise<ChatMessage[]> {
-    try {
-      const { data, error } = await supabase
-        .from('mensajes')
-        .select('*')
-        .eq('caso_id', casoId)
-        .order('fecha_envio', { ascending: true })
-
-      if (error) {
-        console.error('Error fetching chat messages:', error)
         return []
       }
 
       return data || []
     } catch (error) {
-      console.error('Error in getChatMessagesByCaseId:', error)
       return []
     }
   }
 
-  async addChatMessage(data: Omit<ChatMessage, 'id' | 'created_at'>): Promise<ChatMessage | null> {
-    try {
-      const { data: newMessage, error } = await supabase
-        .from('mensajes')
-        .insert([data])
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Error adding chat message:', error)
-        return null
-      }
-
-      return newMessage
-    } catch (error) {
-      console.error('Error in addChatMessage:', error)
       return null
     }
   }

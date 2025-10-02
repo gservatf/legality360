@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,8 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Save, X } from 'lucide-react';
-import { Task } from '@/types/database';
-import { mockDB } from '@/lib/mockDatabase';
+import { dbService } from '@/lib/database';
 import { authService } from '@/lib/auth';
 
 interface NewTaskModalProps {
@@ -24,40 +23,34 @@ export default function NewTaskModal({ isOpen, onClose, onSave, caseId }: NewTas
     titulo: '',
     descripcion: '',
     responsable: '',
-    responsable_tipo: 'cliente' as 'cliente' | 'analista' | 'colaborador',
-    responsable_nombre: '',
-    bmc_block: 'none',
-    prioridad: 'media' as 'baja' | 'media' | 'alta',
     fecha_limite: ''
   });
   
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const clientId = authService.getCurrentClientId();
-  const currentUser = authService.getCurrentUser();
-  const collaborators = clientId ? mockDB.getCollaboratorsByClientId(clientId) : [];
-  const bmcBlocks = mockDB.getBMCBlockNames();
+  useEffect(() => {
+    const loadClientId = async () => {
+      const profile = await authService.getCurrentProfile();
+      if (profile) {
+        setClientId(profile.id);
+        // Set current user as default responsible
+        setFormData(prev => ({ ...prev, responsable: profile.id }));
+      }
+    };
+    loadClientId();
+  }, []);
+
+  // Collaborators and BMC blocks - TODO: Implement in Supabase
+  const collaborators: any[] = []; // TODO: Fetch from Supabase when implemented
+  const bmcBlocks: string[] = []; // TODO: Fetch from Supabase when implemented
 
   const handleResponsableChange = (value: string) => {
-    const [tipo, id] = value.split(':');
-    let nombre = '';
-    
-    if (tipo === 'cliente') {
-      const client = clientId ? mockDB.getClientById(clientId) : null;
-      nombre = client?.nombre || 'Cliente';
-    } else if (tipo === 'analista') {
-      nombre = 'María González'; // In real app, get from current case
-    } else if (tipo === 'colaborador') {
-      const collaborator = collaborators.find(c => c.id === id);
-      nombre = collaborator?.nombre || 'Colaborador';
-    }
-
     setFormData(prev => ({
       ...prev,
-      responsable: id,
-      responsable_tipo: tipo as 'cliente' | 'analista' | 'colaborador',
-      responsable_nombre: nombre
+      responsable: value
     }));
   };
 
@@ -73,44 +66,6 @@ export default function NewTaskModal({ isOpen, onClose, onSave, caseId }: NewTas
     setIsCalendarOpen(false);
   };
 
-  const handleSave = () => {
-    if (formData.titulo && formData.responsable && formData.fecha_limite) {
-      const newTask: Task = {
-        id: `task_${Date.now()}`,
-        caso_id: caseId,
-        titulo: formData.titulo,
-        descripcion: formData.descripcion,
-        responsable: formData.responsable,
-        responsable_tipo: formData.responsable_tipo,
-        responsable_nombre: formData.responsable_nombre,
-        estado: 'pendiente',
-        fecha_limite: formData.fecha_limite,
-        fecha_creacion: new Date().toISOString().split('T')[0],
-        bmc_block: formData.bmc_block === 'none' ? undefined : formData.bmc_block,
-        prioridad: formData.prioridad,
-        created_by: currentUser?.role === 'analista' ? 'analista' : 'cliente'
-      };
-
-      // Add to mock database
-      const tasks = mockDB.getTasks();
-      tasks.push(newTask);
-      localStorage.setItem('legality360_tasks', JSON.stringify(tasks));
-
-      // Reset form
-      setFormData({
-        titulo: '',
-        descripcion: '',
-        responsable: '',
-        responsable_tipo: 'cliente',
-        responsable_nombre: '',
-        bmc_block: 'none',
-        prioridad: 'media',
-        fecha_limite: ''
-      });
-      setSelectedDate(undefined);
-      
-      onSave();
-      onClose();
     }
   };
 
@@ -123,7 +78,7 @@ export default function NewTaskModal({ isOpen, onClose, onSave, caseId }: NewTas
     });
   };
 
-  const isFormValid = formData.titulo && formData.responsable && formData.fecha_limite;
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -156,100 +111,12 @@ export default function NewTaskModal({ isOpen, onClose, onSave, caseId }: NewTas
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Responsable */}
-            <div className="space-y-2">
-              <Label>Responsable *</Label>
-              <Select
-                value={formData.responsable ? `${formData.responsable_tipo}:${formData.responsable}` : ''}
-                onValueChange={handleResponsableChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar responsable" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={`cliente:${clientId}`}>
-                    Cliente Principal
-                  </SelectItem>
-                  <SelectItem value="analista:user_002">
-                    Analista (María González)
-                  </SelectItem>
-                  {collaborators.map(collaborator => (
-                    <SelectItem key={collaborator.id} value={`colaborador:${collaborator.id}`}>
-                      {collaborator.nombre} ({collaborator.rol})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Bloque BMC */}
-            <div className="space-y-2">
-              <Label>Bloque del BMC</Label>
-              <Select
-                value={formData.bmc_block}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, bmc_block: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar bloque" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin bloque asignado</SelectItem>
-                  {bmcBlocks.map(block => (
-                    <SelectItem key={block} value={block}>
-                      {block}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Prioridad */}
-            <div className="space-y-2">
-              <Label>Prioridad</Label>
-              <Select
-                value={formData.prioridad}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, prioridad: value as 'baja' | 'media' | 'alta' }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="baja">Baja</SelectItem>
-                  <SelectItem value="media">Media</SelectItem>
-                  <SelectItem value="alta">Alta</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Fecha Límite */}
-            <div className="space-y-2">
-              <Label>Fecha Límite *</Label>
-              <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDate ? (
-                      formatDateForDisplay(selectedDate)
-                    ) : (
-                      <span>Seleccionar fecha</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={handleDateSelect}
-                    initialFocus
-                    disabled={(date) => date < new Date()}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+          {/* Responsable - Simplified for now */}
+          <div className="space-y-2">
+            <Label>Responsable</Label>
+            <p className="text-sm text-gray-600">
+              La tarea será asignada a tu perfil por defecto
+            </p>
           </div>
 
           {/* Info */}
@@ -266,13 +133,13 @@ export default function NewTaskModal({ isOpen, onClose, onSave, caseId }: NewTas
         <DialogFooter className="flex justify-between">
           <div></div>
           <div className="flex space-x-2">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={onClose} disabled={loading}>
               <X className="h-4 w-4 mr-2" />
               Cancelar
             </Button>
-            <Button onClick={handleSave} disabled={!isFormValid}>
+            <Button onClick={handleSave} disabled={loading || !formData.titulo || !formData.responsable}>
               <Save className="h-4 w-4 mr-2" />
-              Crear Tarea
+              {loading ? 'Creando...' : 'Crear Tarea'}
             </Button>
           </div>
         </DialogFooter>
