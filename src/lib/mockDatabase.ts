@@ -27,7 +27,7 @@ class MockDatabase {
     // Seed Users
     const users: User[] = [
       {
-        user_id: 'user_001',
+        id: 'user_001',
         email: 'contacto@inandinas.com',
         password_hash: 'demo123', // In real app, this would be hashed
         role: 'cliente',
@@ -35,7 +35,7 @@ class MockDatabase {
         nombre: 'Inversiones Andinas S.A.C.',
       },
       {
-        user_id: 'user_002',
+        id: 'user_002',
         email: 'analista@legality360.com',
         password_hash: 'analyst123',
         role: 'analista',
@@ -47,7 +47,7 @@ class MockDatabase {
     // Seed Clients
     const clients: Client[] = [
       {
-        cliente_id: '001',
+        id: '001',
         nombre: 'Inversiones Andinas S.A.C.',
         correo: 'contacto@inandinas.com',
         telefono: '+51 987654321',
@@ -82,7 +82,7 @@ class MockDatabase {
     // Seed Cases
     const cases: Case[] = [
       {
-        caso_id: '101',
+        id: '101',
         cliente_id: '001',
         titulo: 'Implementación Legal 360° – Expansión comercial',
         estado: 'en revisión',
@@ -98,7 +98,7 @@ class MockDatabase {
     // Seed BMC Blocks
     const bmcBlocks: BMCBlock[] = [
       {
-        block_id: 'bmc_001',
+        id: 'bmc_001',
         caso_id: '101',
         block_name: 'Value Proposition',
         risk_level: 'yellow',
@@ -107,7 +107,7 @@ class MockDatabase {
         last_updated: '2025-09-28T10:00:00Z'
       },
       {
-        block_id: 'bmc_002',
+        id: 'bmc_002',
         caso_id: '101',
         block_name: 'Revenue Streams',
         risk_level: 'red',
@@ -116,7 +116,7 @@ class MockDatabase {
         last_updated: '2025-09-28T10:00:00Z'
       },
       {
-        block_id: 'bmc_003',
+        id: 'bmc_003',
         caso_id: '101',
         block_name: 'Key Partners',
         risk_level: 'green',
@@ -125,7 +125,7 @@ class MockDatabase {
         last_updated: '2025-09-28T10:00:00Z'
       },
       {
-        block_id: 'bmc_004',
+        id: 'bmc_004',
         caso_id: '101',
         block_name: 'Customer Segments',
         risk_level: 'green',
@@ -134,7 +134,7 @@ class MockDatabase {
         last_updated: '2025-09-28T10:00:00Z'
       },
       {
-        block_id: 'bmc_005',
+        id: 'bmc_005',
         caso_id: '101',
         block_name: 'Channels',
         risk_level: 'yellow',
@@ -143,7 +143,7 @@ class MockDatabase {
         last_updated: '2025-09-28T10:00:00Z'
       },
       {
-        block_id: 'bmc_006',
+        id: 'bmc_006',
         caso_id: '101',
         block_name: 'Customer Relationships',
         risk_level: 'green',
@@ -152,7 +152,7 @@ class MockDatabase {
         last_updated: '2025-09-28T10:00:00Z'
       },
       {
-        block_id: 'bmc_007',
+        id: 'bmc_007',
         caso_id: '101',
         block_name: 'Key Resources',
         risk_level: 'yellow',
@@ -161,7 +161,7 @@ class MockDatabase {
         last_updated: '2025-09-28T10:00:00Z'
       },
       {
-        block_id: 'bmc_008',
+        id: 'bmc_008',
         caso_id: '101',
         block_name: 'Key Activities',
         risk_level: 'green',
@@ -170,7 +170,7 @@ class MockDatabase {
         last_updated: '2025-09-28T10:00:00Z'
       },
       {
-        block_id: 'bmc_009',
+        id: 'bmc_009',
         caso_id: '101',
         block_name: 'Cost Structure',
         risk_level: 'yellow',
@@ -184,7 +184,7 @@ class MockDatabase {
     // Seed Tasks with new structure
     const tasks: Task[] = [
       {
-        task_id: 'task_001',
+        id: 'task_001',
         caso_id: '101',
         titulo: 'Subir contrato de proveedor de software',
         descripcion: 'Cargar el contrato firmado con el proveedor de software en la carpeta de Drive',
@@ -199,7 +199,7 @@ class MockDatabase {
         created_by: 'analista'
       },
       {
-        task_id: 'task_002',
+        id: 'task_002',
         caso_id: '101',
         titulo: 'Elaborar informe de riesgos laborales',
         descripcion: 'Preparar análisis detallado de riesgos en materia laboral',
@@ -214,7 +214,7 @@ class MockDatabase {
         created_by: 'analista'
       },
       {
-        task_id: 'task_003',
+        id: 'task_003',
         caso_id: '101',
         titulo: 'Registrar marca en INDECOPI',
         descripcion: 'Iniciar trámite de registro de marca comercial',
@@ -229,7 +229,7 @@ class MockDatabase {
         created_by: 'analista'
       },
       {
-        task_id: 'task_004',
+        id: 'task_004',
         caso_id: '101',
         titulo: 'Revisar contratos con proveedores',
         descripcion: 'Validar términos y condiciones de contratos existentes',
@@ -249,7 +249,7 @@ class MockDatabase {
     // Seed Documents
     const documents: Document[] = [
       {
-        document_id: 'doc_001',
+        id: 'doc_001',
         caso_id: '101',
         nombre: 'Contrato de Servicios Legal 360°',
         tipo: 'contrato',
@@ -258,7 +258,7 @@ class MockDatabase {
         subido_por: 'analista'
       },
       {
-        document_id: 'doc_002',
+        id: 'doc_002',
         caso_id: '101',
         nombre: 'Evaluación Inicial de Riesgos',
         tipo: 'evaluacion',
@@ -272,7 +272,7 @@ class MockDatabase {
     // Seed Chat Messages
     const chatMessages: ChatMessage[] = [
       {
-        message_id: 'msg_001',
+        id: 'msg_001',
         caso_id: '101',
         sender: 'analista',
         sender_name: 'María González',
@@ -281,7 +281,7 @@ class MockDatabase {
         leido: false
       },
       {
-        message_id: 'msg_002',
+        id: 'msg_002',
         caso_id: '101',
         sender: 'cliente',
         sender_name: 'Inversiones Andinas S.A.C.',
@@ -295,7 +295,7 @@ class MockDatabase {
     // Seed Reports
     const reports: Report[] = [
       {
-        report_id: 'rep_001',
+        id: 'rep_001',
         caso_id: '101',
         titulo: 'LG-01-CORP-28-SEPTIEMBRE-2025.pdf',
         tipo: 'completo',
@@ -313,7 +313,7 @@ class MockDatabase {
   }
 
   getClientById(clientId: string): Client | undefined {
-    return this.getClients().find(c => c.cliente_id === clientId);
+    return this.getClients().find(c => c.id === clientId);
   }
 
   getCollaborators(): ClientCollaborator[] {
@@ -349,7 +349,7 @@ class MockDatabase {
   }
 
   getTaskById(taskId: string): Task | undefined {
-    return this.getTasks().find(t => t.task_id === taskId);
+    return this.getTasks().find(t => t.id === taskId);
   }
 
   getDocuments(): Document[] {
@@ -385,11 +385,11 @@ class MockDatabase {
   }
 
   // Add new message to chat
-  addChatMessage(message: Omit<ChatMessage, 'message_id'>): void {
+  addChatMessage(message: Omit<ChatMessage, 'id'>): void {
     const messages = this.getChatMessages();
     const newMessage: ChatMessage = {
       ...message,
-      message_id: `msg_${Date.now()}`
+      id: `msg_${Date.now()}`
     };
     messages.push(newMessage);
     this.setData('chatMessages', messages);
@@ -398,7 +398,7 @@ class MockDatabase {
   // Update task status
   updateTaskStatus(taskId: string, status: Task['estado']): void {
     const tasks = this.getTasks();
-    const taskIndex = tasks.findIndex(t => t.task_id === taskId);
+    const taskIndex = tasks.findIndex(t => t.id === taskId);
     if (taskIndex !== -1) {
       tasks[taskIndex].estado = status;
       this.setData('tasks', tasks);
@@ -408,7 +408,7 @@ class MockDatabase {
   // Update full task
   updateTask(taskId: string, taskData: TaskEditData): void {
     const tasks = this.getTasks();
-    const taskIndex = tasks.findIndex(t => t.task_id === taskId);
+    const taskIndex = tasks.findIndex(t => t.id === taskId);
     if (taskIndex !== -1) {
       tasks[taskIndex] = {
         ...tasks[taskIndex],

@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
-import type { Profile, Empresa, Caso, Tarea, ProfileWithTaskCount, CasoWithDetails } from './supabase'
 
 class DatabaseService {
+  private channels: Map<string, RealtimeChannel> = new Map()
   // Profile management with role-based access
   async getAllProfiles(): Promise<Profile[]> {
     try {
@@ -562,25 +562,6 @@ class DatabaseService {
     }
   }
 
-  async deleteTarea(tareaId: string): Promise<{ data: boolean; error: any }> {
-    try {
-      const { error } = await supabase
-        .from('tareas')
-        .delete()
-        .eq('id', tareaId)
-
-      if (error) {
-        console.error('Error deleting tarea:', error)
-        return { data: false, error }
-      }
-
-      return { data: true, error: null }
-    } catch (error) {
-      console.error('Error in deleteTarea:', error)
-      return { data: false, error }
-    }
-  }
-
   // Solicitud de horas extra
   async solicitarHorasExtra({
     caso_id,
@@ -618,6 +599,9 @@ class DatabaseService {
       console.error('Error en solicitarHorasExtra:', error)
       return null
     }
+  }
+
+
   }
 }
 

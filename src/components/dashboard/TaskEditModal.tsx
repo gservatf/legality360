@@ -9,7 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Save, X, Link, ExternalLink } from 'lucide-react';
 import { Task, TaskEditData } from '@/types/database';
-import { mockDB } from '@/lib/mockDatabase';
+import { dashboardDataService } from '@/lib/dashboardAdapter';
 import { authService } from '@/lib/auth';
 
 interface TaskEditModalProps {
@@ -36,10 +36,21 @@ export default function TaskEditModal({ task, isOpen, onClose, onSave, userRole 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [driveLink, setDriveLink] = useState('');
+  const [clientId, setClientId] = useState<string | null>(null);
 
-  const clientId = authService.getCurrentClientId();
-  const collaborators = clientId ? mockDB.getCollaboratorsByClientId(clientId) : [];
-  const bmcBlocks = mockDB.getBMCBlockNames();
+  // Collaborators and BMC blocks - TODO: Implement in Supabase
+  const collaborators: any[] = []; // TODO: Fetch from Supabase when implemented
+  const bmcBlocks: string[] = []; // TODO: Fetch from Supabase when implemented
+
+  useEffect(() => {
+    const loadClientId = async () => {
+      const profile = await authService.getCurrentProfile();
+      if (profile) {
+        setClientId(profile.id);
+      }
+    };
+    loadClientId();
+  }, []);
 
   useEffect(() => {
     if (task) {
@@ -57,20 +68,20 @@ export default function TaskEditModal({ task, isOpen, onClose, onSave, userRole 
       setSelectedDate(task.fecha_limite ? new Date(task.fecha_limite) : undefined);
       
       // Load saved drive link for this task
-      const savedDriveLink = localStorage.getItem(`task_drive_${task.task_id}`);
+      const savedDriveLink = localStorage.getItem(`task_drive_${task.id}`);
       setDriveLink(savedDriveLink || '');
     }
   }, [task]);
 
-  const handleResponsableChange = (value: string) => {
+  const handleResponsableChange = async (value: string) => {
     const [tipo, id] = value.split(':');
     let nombre = '';
     
     if (tipo === 'cliente') {
-      const client = clientId ? mockDB.getClientById(clientId) : null;
-      nombre = client?.nombre || 'Cliente';
+      const profile = await dashboardDataService.getProfileById(clientId || '');
+      nombre = profile?.full_name || 'Cliente';
     } else if (tipo === 'analista') {
-      nombre = 'María González'; // In real app, get from current case
+      nombre = 'María González'; // TODO: Get from case assignment
     } else if (tipo === 'colaborador') {
       const collaborator = collaborators.find(c => c.id === id);
       nombre = collaborator?.nombre || 'Colaborador';
@@ -105,10 +116,10 @@ export default function TaskEditModal({ task, isOpen, onClose, onSave, userRole 
       
       // Save drive link separately
       if (driveLink) {
-        localStorage.setItem(`task_drive_${task.task_id}`, driveLink);
+        localStorage.setItem(`task_drive_${task.id}`, driveLink);
       }
       
-      onSave(task.task_id, saveData);
+      onSave(task.id, saveData);
       onClose();
     }
   };
@@ -351,7 +362,7 @@ export default function TaskEditModal({ task, isOpen, onClose, onSave, userRole 
                 <span className="font-medium">Responsable actual:</span> {task.responsable_nombre}
               </div>
               <div>
-                <span className="font-medium">ID de tarea:</span> {task.task_id}
+                <span className="font-medium">ID de tarea:</span> {task.id}
               </div>
             </div>
           </div>

@@ -1,17 +1,48 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { User, FileText, CreditCard, Calendar, ExternalLink } from 'lucide-react';
-import { mockDB } from '@/lib/mockDatabase';
+import { dashboardDataService } from '@/lib/dashboardAdapter';
 import { authService } from '@/lib/auth';
 
 export default function ClientAccount() {
-  const clientId = authService.getCurrentClientId();
-  const client = clientId ? mockDB.getClientById(clientId) : null;
-  const cases = clientId ? mockDB.getCasesByClientId(clientId) : [];
+  const [profile, setProfile] = useState<any>(null);
+  const [cases, setCases] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const currentProfile = await authService.getCurrentProfile();
+        if (currentProfile) {
+          setProfile(currentProfile);
+          if (currentProfile.role === 'cliente') {
+            const fetchedCases = await dashboardDataService.getCasesByClientId(currentProfile.id);
+            setCases(fetchedCases);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading client account data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
   const currentCase = cases[0]; // For demo, use first case
 
-  if (!client) return null;
+  if (loading) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        Cargando información del cliente...
+      </div>
+    );
+  }
+
+  if (!profile) return null;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-ES', {
@@ -46,22 +77,22 @@ export default function ClientAccount() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h3 className="font-semibold text-lg text-gray-900">{client.nombre}</h3>
-            {getStatusBadge(client.estado)}
+            <h3 className="font-semibold text-lg text-gray-900">{profile.full_name || profile.email}</h3>
+            <Badge className="bg-green-100 text-green-800">Activo</Badge>
           </div>
           
           <div className="space-y-2">
             <div className="flex items-center space-x-2 text-sm">
               <span className="font-medium text-gray-700">Email:</span>
-              <span className="text-gray-600">{client.correo}</span>
+              <span className="text-gray-600">{profile.email}</span>
             </div>
             <div className="flex items-center space-x-2 text-sm">
-              <span className="font-medium text-gray-700">Teléfono:</span>
-              <span className="text-gray-600">{client.telefono}</span>
+              <span className="font-medium text-gray-700">Rol:</span>
+              <span className="text-gray-600">{profile.role}</span>
             </div>
             <div className="flex items-center space-x-2 text-sm">
               <span className="font-medium text-gray-700">Cliente desde:</span>
-              <span className="text-gray-600">{formatDate(client.created_at)}</span>
+              <span className="text-gray-600">{formatDate(profile.created_at)}</span>
             </div>
           </div>
           

@@ -9,7 +9,7 @@ import Chat from '@/components/dashboard/Chat';
 import Reports from '@/components/dashboard/Reports';
 import CollaboratorManager from '@/components/dashboard/CollaboratorManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { mockDB } from '@/lib/mockDatabase';
+import { dashboardDataService } from '@/lib/dashboardAdapter';
 import { authService } from '@/lib/auth';
 
 interface DashboardProps {
@@ -18,14 +18,41 @@ interface DashboardProps {
 
 export default function Dashboard({ onLogout }: DashboardProps) {
   const [activeTab, setActiveTab] = useState('overview');
-  const clientId = authService.getCurrentClientId();
-  const cases = clientId ? mockDB.getCasesByClientId(clientId) : [];
-  const currentCase = cases[0]; // For demo, use first case
+  const [cases, setCases] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [clientId, setClientId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Initialize database when dashboard loads
-    mockDB.initializeDatabase();
+    // Load cases from Supabase when dashboard loads
+    const loadCases = async () => {
+      try {
+        const profile = await authService.getCurrentProfile();
+        if (profile && profile.role === 'cliente') {
+          setClientId(profile.id);
+          const fetchedCases = await dashboardDataService.getCasesByClientId(profile.id);
+          setCases(fetchedCases);
+        }
+      } catch (error) {
+        console.error('Error loading cases:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCases();
   }, []);
+
+  const currentCase = cases[0]; // For demo, use first case
+
+  if (loading) {
+    return (
+      <DashboardLayout onLogout={onLogout}>
+        <div className="text-center py-12">
+          <p className="text-gray-600">Cargando...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!currentCase) {
     return (
