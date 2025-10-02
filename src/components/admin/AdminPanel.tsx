@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Loader2, Users, Building2, Briefcase, Plus, Edit, Trash2, CheckCircle, Clock, AlertCircle, UserCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { dbService } from '@/lib/database'
-import { Profile, Empresa, Caso, ProfileWithTaskCount, CasoWithDetails } from '@/lib/supabase'
+import { Profile, Empresa, Caso, Tarea, ProfileWithTaskCount, CasoWithDetails } from '@/lib/supabase'
 
 interface AdminPanelProps {
   onLogout: () => void
@@ -41,6 +41,7 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
   const [pendingUsers, setPendingUsers] = useState<Profile[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [casos, setCasos] = useState<CasoWithDetails[]>([])
+  const [tareas, setTareas] = useState<Tarea[]>([])
   const [stats, setStats] = useState<DashboardStats>({
     total_usuarios: 0,
     usuarios_pendientes: 0,
@@ -60,6 +61,14 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
     empresa_id: '',
     cliente_id: ''
   })
+  const [editingCaso, setEditingCaso] = useState<CasoWithDetails | null>(null)
+  const [newTarea, setNewTarea] = useState({
+    titulo: '',
+    caso_id: '',
+    asignado_a: '',
+    descripcion: ''
+  })
+  const [editingTarea, setEditingTarea] = useState<Tarea | null>(null)
 
   useEffect(() => {
     loadCurrentUser()
@@ -114,6 +123,14 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
         const usersData = await dbService.getAllProfiles()
         setEmpresas(empresasData)
         setUsers(usersData.filter(u => u.role === 'cliente'))
+      } else if (activeTab === 'tareas') {
+        const tareasData = await dbService.getAllTareas()
+        setTareas(tareasData)
+        // Also load casos and users for dropdowns
+        const casosData = await dbService.getAllCasosWithDetails()
+        const usersData = await dbService.getAllProfiles()
+        setCasos(casosData)
+        setUsers(usersData)
       }
     } catch (err) {
       setError('Error al cargar los datos')
@@ -249,6 +266,139 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
     }
   }
 
+  const handleUpdateCaso = async () => {
+    if (!editingCaso || !editingCaso.titulo.trim()) return
+
+    try {
+      setError(null)
+      const result = await dbService.updateCaso(
+        editingCaso.id,
+        editingCaso.titulo.trim(),
+        editingCaso.empresa_id,
+        editingCaso.cliente_id,
+        editingCaso.estado
+      )
+      
+      if (result) {
+        setSuccess('Caso actualizado exitosamente')
+        setEditingCaso(null)
+        await loadData()
+      } else {
+        setError('Error al actualizar el caso')
+      }
+    } catch (err) {
+      setError('Error al actualizar el caso')
+      console.error('Error updating caso:', err)
+    }
+  }
+
+  const handleDeleteCaso = async (id: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este caso? Esto también eliminará todas sus tareas asociadas.')) return
+
+    try {
+      setError(null)
+      const result = await dbService.deleteCaso(id)
+      
+      if (result) {
+        setSuccess('Caso eliminado exitosamente')
+        await loadData()
+      } else {
+        setError('Error al eliminar el caso')
+      }
+    } catch (err) {
+      setError('Error al eliminar el caso')
+      console.error('Error deleting caso:', err)
+    }
+  }
+
+  const handleCreateTarea = async () => {
+    if (!newTarea.titulo.trim() || !newTarea.caso_id || !newTarea.asignado_a) return
+
+    try {
+      setError(null)
+      const result = await dbService.createTarea(
+        newTarea.caso_id,
+        newTarea.asignado_a,
+        newTarea.titulo.trim(),
+        newTarea.descripcion.trim() || undefined
+      )
+      
+      if (result) {
+        setSuccess('Tarea creada exitosamente')
+        setNewTarea({ titulo: '', caso_id: '', asignado_a: '', descripcion: '' })
+        await loadData()
+      } else {
+        setError('Error al crear la tarea')
+      }
+    } catch (err) {
+      setError('Error al crear la tarea')
+      console.error('Error creating tarea:', err)
+    }
+  }
+
+  const handleUpdateTarea = async () => {
+    if (!editingTarea || !editingTarea.titulo.trim()) return
+
+    try {
+      setError(null)
+      const result = await dbService.updateTarea(
+        editingTarea.id,
+        editingTarea.titulo.trim(),
+        editingTarea.descripcion?.trim() || undefined,
+        editingTarea.caso_id,
+        editingTarea.asignado_a,
+        editingTarea.estado
+      )
+      
+      if (result) {
+        setSuccess('Tarea actualizada exitosamente')
+        setEditingTarea(null)
+        await loadData()
+      } else {
+        setError('Error al actualizar la tarea')
+      }
+    } catch (err) {
+      setError('Error al actualizar la tarea')
+      console.error('Error updating tarea:', err)
+    }
+  }
+
+  const handleUpdateTareaEstado = async (tareaId: string, nuevoEstado: 'pendiente' | 'en_progreso' | 'completada') => {
+    try {
+      setError(null)
+      const result = await dbService.updateTareaEstado(tareaId, nuevoEstado)
+      
+      if (result) {
+        setSuccess(`Tarea marcada como ${nuevoEstado}`)
+        await loadData()
+      } else {
+        setError('Error al actualizar el estado de la tarea')
+      }
+    } catch (err) {
+      setError('Error al actualizar el estado de la tarea')
+      console.error('Error updating tarea estado:', err)
+    }
+  }
+
+  const handleDeleteTarea = async (id: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta tarea?')) return
+
+    try {
+      setError(null)
+      const result = await dbService.deleteTarea(id)
+      
+      if (result) {
+        setSuccess('Tarea eliminada exitosamente')
+        await loadData()
+      } else {
+        setError('Error al eliminar la tarea')
+      }
+    } catch (err) {
+      setError('Error al eliminar la tarea')
+      console.error('Error deleting tarea:', err)
+    }
+  }
+
   const getRoleBadgeColor = (role: Profile['role']) => {
     switch (role) {
       case 'admin':
@@ -272,6 +422,12 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
         return 'bg-green-100 text-green-800'
       case 'cerrado':
         return 'bg-gray-100 text-gray-800'
+      case 'pendiente':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'en_progreso':
+        return 'bg-blue-100 text-blue-800'
+      case 'completada':
+        return 'bg-green-100 text-green-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
@@ -706,26 +862,589 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
             </Card>
           </TabsContent>
 
-          <TabsContent value="casos">
+          <TabsContent value="casos" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Gestión de Casos</CardTitle>
-                <CardDescription>Administra los casos legales del sistema</CardDescription>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Briefcase className="h-5 w-5" />
+                      <span>Gestión de Casos</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Administra los casos legales del sistema
+                    </CardDescription>
+                  </div>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Nuevo Caso
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Crear Nuevo Caso</DialogTitle>
+                        <DialogDescription>
+                          Crea un nuevo caso legal
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="caso-titulo">Título del Caso</Label>
+                          <Input
+                            id="caso-titulo"
+                            value={newCaso.titulo}
+                            onChange={(e) => setNewCaso(prev => ({...prev, titulo: e.target.value}))}
+                            placeholder="Ej: Contrato de Servicios - Acme Corp"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="caso-empresa">Empresa</Label>
+                          <Select
+                            value={newCaso.empresa_id}
+                            onValueChange={(value) => setNewCaso(prev => ({...prev, empresa_id: value}))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona una empresa" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {empresas.map((empresa) => (
+                                <SelectItem key={empresa.id} value={empresa.id}>
+                                  {empresa.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="caso-cliente">Cliente</Label>
+                          <Select
+                            value={newCaso.cliente_id}
+                            onValueChange={(value) => setNewCaso(prev => ({...prev, cliente_id: value}))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona un cliente" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {users.filter(u => u.role === 'cliente').map((cliente) => (
+                                <SelectItem key={cliente.id} value={cliente.id}>
+                                  {cliente.full_name} ({cliente.email})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button 
+                          onClick={handleCreateCaso} 
+                          disabled={!newCaso.titulo.trim() || !newCaso.empresa_id || !newCaso.cliente_id}
+                        >
+                          Crear Caso
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </CardHeader>
               <CardContent>
-                <p className="text-center py-8 text-gray-500">Funcionalidad de casos pendiente de implementar</p>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                    <span className="ml-2 text-gray-600">Cargando casos...</span>
+                  </div>
+                ) : casos.length === 0 ? (
+                  <p className="text-center py-8 text-gray-500">No hay casos registrados.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Título</TableHead>
+                          <TableHead>Empresa</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Tareas</TableHead>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {casos.map((caso) => (
+                          <TableRow key={caso.id}>
+                            <TableCell className="font-medium">{caso.titulo}</TableCell>
+                            <TableCell>{caso.empresa?.nombre}</TableCell>
+                            <TableCell>
+                              {caso.cliente?.full_name || 'Sin asignar'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={getEstadoBadgeColor(caso.estado)}>
+                                {caso.estado}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                <span className="text-gray-600">{caso.tareas_count || 0} total</span>
+                                {(caso.tareas_pendientes || 0) > 0 && (
+                                  <span className="text-orange-600 ml-2">
+                                    {caso.tareas_pendientes} pendientes
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-gray-600">
+                              {formatDate(caso.created_at)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Dialog
+                                  open={editingCaso?.id === caso.id}
+                                  onOpenChange={(open) => {
+                                    if (open) {
+                                      setEditingCaso(caso)
+                                    } else {
+                                      setEditingCaso(null)
+                                    }
+                                  }}
+                                >
+                                  <DialogTrigger asChild>
+                                    <Button size="sm" variant="outline">
+                                      <Edit className="w-4 h-4 mr-1" /> Editar
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>Editar Caso</DialogTitle>
+                                      <DialogDescription>
+                                        Actualiza los detalles del caso
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      <div>
+                                        <Label htmlFor="edit-caso-titulo">Título del Caso</Label>
+                                        <Input
+                                          id="edit-caso-titulo"
+                                          value={editingCaso?.titulo || ''}
+                                          onChange={(e) =>
+                                            setEditingCaso(
+                                              editingCaso
+                                                ? { ...editingCaso, titulo: e.target.value }
+                                                : null
+                                            )
+                                          }
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="edit-caso-empresa">Empresa</Label>
+                                        <Select
+                                          value={editingCaso?.empresa_id || ''}
+                                          onValueChange={(value) =>
+                                            setEditingCaso(
+                                              editingCaso
+                                                ? { ...editingCaso, empresa_id: value }
+                                                : null
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {empresas.map((empresa) => (
+                                              <SelectItem key={empresa.id} value={empresa.id}>
+                                                {empresa.nombre}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="edit-caso-cliente">Cliente</Label>
+                                        <Select
+                                          value={editingCaso?.cliente_id || ''}
+                                          onValueChange={(value) =>
+                                            setEditingCaso(
+                                              editingCaso
+                                                ? { ...editingCaso, cliente_id: value }
+                                                : null
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {users.filter(u => u.role === 'cliente').map((cliente) => (
+                                              <SelectItem key={cliente.id} value={cliente.id}>
+                                                {cliente.full_name} ({cliente.email})
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="edit-caso-estado">Estado</Label>
+                                        <Select
+                                          value={editingCaso?.estado || 'activo'}
+                                          onValueChange={(value) =>
+                                            setEditingCaso(
+                                              editingCaso
+                                                ? { ...editingCaso, estado: value as 'activo' | 'cerrado' }
+                                                : null
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="activo">Activo</SelectItem>
+                                            <SelectItem value="cerrado">Cerrado</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                    <DialogFooter>
+                                      <Button
+                                        variant="outline"
+                                        onClick={() => setEditingCaso(null)}
+                                      >
+                                        Cancelar
+                                      </Button>
+                                      <Button
+                                        onClick={handleUpdateCaso}
+                                        disabled={!editingCaso?.titulo.trim()}
+                                      >
+                                        Guardar
+                                      </Button>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleDeleteCaso(caso.id)}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-1" /> Eliminar
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="tareas">
+          <TabsContent value="tareas" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Gestión de Tareas</CardTitle>
-                <CardDescription>Vista general de todas las tareas del sistema</CardDescription>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle className="flex items-center space-x-2">
+                      <CheckCircle className="h-5 w-5" />
+                      <span>Gestión de Tareas</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Vista general de todas las tareas del sistema
+                    </CardDescription>
+                  </div>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Nueva Tarea
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Crear Nueva Tarea</DialogTitle>
+                        <DialogDescription>
+                          Crea una nueva tarea vinculada a un caso
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="tarea-titulo">Título de la Tarea</Label>
+                          <Input
+                            id="tarea-titulo"
+                            value={newTarea.titulo}
+                            onChange={(e) => setNewTarea(prev => ({...prev, titulo: e.target.value}))}
+                            placeholder="Ej: Revisar documentación legal"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="tarea-caso">Caso</Label>
+                          <Select
+                            value={newTarea.caso_id}
+                            onValueChange={(value) => setNewTarea(prev => ({...prev, caso_id: value}))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona un caso" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {casos.map((caso) => (
+                                <SelectItem key={caso.id} value={caso.id}>
+                                  {caso.titulo}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="tarea-asignado">Asignado a</Label>
+                          <Select
+                            value={newTarea.asignado_a}
+                            onValueChange={(value) => setNewTarea(prev => ({...prev, asignado_a: value}))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona un usuario" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {users.filter(u => ['analista', 'abogado', 'admin'].includes(u.role)).map((user) => (
+                                <SelectItem key={user.id} value={user.id}>
+                                  {user.full_name} ({user.role})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="tarea-descripcion">Descripción (Opcional)</Label>
+                          <Input
+                            id="tarea-descripcion"
+                            value={newTarea.descripcion}
+                            onChange={(e) => setNewTarea(prev => ({...prev, descripcion: e.target.value}))}
+                            placeholder="Describe los detalles de la tarea..."
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button 
+                          onClick={handleCreateTarea} 
+                          disabled={!newTarea.titulo.trim() || !newTarea.caso_id || !newTarea.asignado_a}
+                        >
+                          Crear Tarea
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </CardHeader>
               <CardContent>
-                <p className="text-center py-8 text-gray-500">Funcionalidad de tareas pendiente de implementar</p>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                    <span className="ml-2 text-gray-600">Cargando tareas...</span>
+                  </div>
+                ) : tareas.length === 0 ? (
+                  <p className="text-center py-8 text-gray-500">No hay tareas registradas.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Título</TableHead>
+                          <TableHead>Caso</TableHead>
+                          <TableHead>Asignado a</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {tareas.map((tarea) => (
+                          <TableRow key={tarea.id}>
+                            <TableCell className="font-medium">{tarea.titulo}</TableCell>
+                            <TableCell>{tarea.caso?.titulo || 'Sin caso'}</TableCell>
+                            <TableCell>
+                              {tarea.asignado?.full_name || 'Sin asignar'}
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={tarea.estado}
+                                onValueChange={(newEstado) => 
+                                  handleUpdateTareaEstado(tarea.id, newEstado as 'pendiente' | 'en_progreso' | 'completada')
+                                }
+                              >
+                                <SelectTrigger className="w-36">
+                                  <SelectValue>
+                                    <Badge className={getEstadoBadgeColor(tarea.estado)}>
+                                      {tarea.estado === 'pendiente' && 'Pendiente'}
+                                      {tarea.estado === 'en_progreso' && 'En Progreso'}
+                                      {tarea.estado === 'completada' && 'Completada'}
+                                    </Badge>
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pendiente">Pendiente</SelectItem>
+                                  <SelectItem value="en_progreso">En Progreso</SelectItem>
+                                  <SelectItem value="completada">Completada</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="text-sm text-gray-600">
+                              {formatDate(tarea.created_at)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Dialog
+                                  open={editingTarea?.id === tarea.id}
+                                  onOpenChange={(open) => {
+                                    if (open) {
+                                      setEditingTarea(tarea)
+                                    } else {
+                                      setEditingTarea(null)
+                                    }
+                                  }}
+                                >
+                                  <DialogTrigger asChild>
+                                    <Button size="sm" variant="outline">
+                                      <Edit className="w-4 h-4 mr-1" /> Editar
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>Editar Tarea</DialogTitle>
+                                      <DialogDescription>
+                                        Actualiza los detalles de la tarea
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      <div>
+                                        <Label htmlFor="edit-tarea-titulo">Título de la Tarea</Label>
+                                        <Input
+                                          id="edit-tarea-titulo"
+                                          value={editingTarea?.titulo || ''}
+                                          onChange={(e) =>
+                                            setEditingTarea(
+                                              editingTarea
+                                                ? { ...editingTarea, titulo: e.target.value }
+                                                : null
+                                            )
+                                          }
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="edit-tarea-caso">Caso</Label>
+                                        <Select
+                                          value={editingTarea?.caso_id || ''}
+                                          onValueChange={(value) =>
+                                            setEditingTarea(
+                                              editingTarea
+                                                ? { ...editingTarea, caso_id: value }
+                                                : null
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {casos.map((caso) => (
+                                              <SelectItem key={caso.id} value={caso.id}>
+                                                {caso.titulo}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="edit-tarea-asignado">Asignado a</Label>
+                                        <Select
+                                          value={editingTarea?.asignado_a || ''}
+                                          onValueChange={(value) =>
+                                            setEditingTarea(
+                                              editingTarea
+                                                ? { ...editingTarea, asignado_a: value }
+                                                : null
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {users.filter(u => ['analista', 'abogado', 'admin'].includes(u.role)).map((user) => (
+                                              <SelectItem key={user.id} value={user.id}>
+                                                {user.full_name} ({user.role})
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="edit-tarea-estado">Estado</Label>
+                                        <Select
+                                          value={editingTarea?.estado || 'pendiente'}
+                                          onValueChange={(value) =>
+                                            setEditingTarea(
+                                              editingTarea
+                                                ? { ...editingTarea, estado: value as 'pendiente' | 'en_progreso' | 'completada' }
+                                                : null
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="pendiente">Pendiente</SelectItem>
+                                            <SelectItem value="en_progreso">En Progreso</SelectItem>
+                                            <SelectItem value="completada">Completada</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="edit-tarea-descripcion">Descripción</Label>
+                                        <Input
+                                          id="edit-tarea-descripcion"
+                                          value={editingTarea?.descripcion || ''}
+                                          onChange={(e) =>
+                                            setEditingTarea(
+                                              editingTarea
+                                                ? { ...editingTarea, descripcion: e.target.value }
+                                                : null
+                                            )
+                                          }
+                                        />
+                                      </div>
+                                    </div>
+                                    <DialogFooter>
+                                      <Button
+                                        variant="outline"
+                                        onClick={() => setEditingTarea(null)}
+                                      >
+                                        Cancelar
+                                      </Button>
+                                      <Button
+                                        onClick={handleUpdateTarea}
+                                        disabled={!editingTarea?.titulo.trim()}
+                                      >
+                                        Guardar
+                                      </Button>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleDeleteTarea(tarea.id)}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-1" /> Eliminar
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

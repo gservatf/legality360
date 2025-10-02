@@ -362,7 +362,77 @@ class DatabaseService {
     }
   }
 
+  async updateCaso(casoId: string, titulo: string, empresaId?: string, clienteId?: string, estado?: 'activo' | 'cerrado'): Promise<boolean> {
+    try {
+      const updateData: {
+        titulo: string
+        empresa_id?: string
+        cliente_id?: string
+        estado?: 'activo' | 'cerrado'
+      } = { titulo }
+      if (empresaId) updateData.empresa_id = empresaId
+      if (clienteId) updateData.cliente_id = clienteId
+      if (estado) updateData.estado = estado
+
+      const { error } = await supabase
+        .from('casos')
+        .update(updateData)
+        .eq('id', casoId)
+
+      if (error) {
+        console.error('Error updating caso:', error)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error in updateCaso:', error)
+      return false
+    }
+  }
+
+  async deleteCaso(casoId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('casos')
+        .delete()
+        .eq('id', casoId)
+
+      if (error) {
+        console.error('Error deleting caso:', error)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error in deleteCaso:', error)
+      return false
+    }
+  }
+
   // Task management
+  async getAllTareas(): Promise<Tarea[]> {
+    try {
+      const { data, error } = await supabase
+        .from('tareas')
+        .select(`
+          *,
+          caso:casos(*),
+          asignado:profiles(*)
+        `)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching all tasks:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('Error in getAllTareas:', error)
+      return []
+    }
+  }
   async getTareasByUser(userId: string): Promise<Tarea[]> {
     try {
       const { data, error } = await supabase
@@ -425,6 +495,56 @@ class DatabaseService {
       return true
     } catch (error) {
       console.error('Error in updateTareaEstado:', error)
+      return false
+    }
+  }
+
+  async updateTarea(tareaId: string, titulo: string, descripcion?: string, casoId?: string, asignadoA?: string, estado?: 'pendiente' | 'en_progreso' | 'completada'): Promise<boolean> {
+    try {
+      const updateData: {
+        titulo: string
+        descripcion?: string | null
+        caso_id?: string
+        asignado_a?: string
+        estado?: 'pendiente' | 'en_progreso' | 'completada'
+      } = { titulo }
+      if (descripcion !== undefined) updateData.descripcion = descripcion
+      if (casoId) updateData.caso_id = casoId
+      if (asignadoA) updateData.asignado_a = asignadoA
+      if (estado) updateData.estado = estado
+
+      const { error } = await supabase
+        .from('tareas')
+        .update(updateData)
+        .eq('id', tareaId)
+
+      if (error) {
+        console.error('Error updating tarea:', error)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error in updateTarea:', error)
+      return false
+    }
+  }
+
+  async deleteTarea(tareaId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('tareas')
+        .delete()
+        .eq('id', tareaId)
+
+      if (error) {
+        console.error('Error deleting tarea:', error)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error in deleteTarea:', error)
       return false
     }
   }
