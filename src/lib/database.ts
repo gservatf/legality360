@@ -1,6 +1,4 @@
 import { supabase } from './supabase'
-import type { Profile, Empresa, Caso, Tarea, ProfileWithTaskCount, CasoWithDetails } from './supabase'
-import type { RealtimeChannel } from '@supabase/supabase-js'
 
 class DatabaseService {
   private channels: Map<string, RealtimeChannel> = new Map()
@@ -431,6 +429,29 @@ class DatabaseService {
     }
   }
 
+  async updateTask(taskId: string, data: Partial<Tarea>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('tareas')
+        .update(data)
+        .eq('id', taskId)
+
+      if (error) {
+        console.error('Error updating task:', error)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error in updateTask:', error)
+      return false
+    }
+  }
+
+  async updateTaskStatus(taskId: string, estado: 'pendiente' | 'en_progreso' | 'completada'): Promise<boolean> {
+    return this.updateTareaEstado(taskId, estado)
+  }
+
   // Solicitud de horas extra
   async solicitarHorasExtra({
     caso_id,
@@ -470,128 +491,7 @@ class DatabaseService {
     }
   }
 
-  // Real-time subscriptions
-  /**
-   * Subscribe to changes in the casos table
-   * @param callback Function to call when casos data changes
-   * @returns Channel name for unsubscribing
-   */
-  subscribeToCasos(callback: (payload: any) => void): string {
-    const channelName = 'casos-changes'
-    
-    // Remove existing channel if it exists
-    if (this.channels.has(channelName)) {
-      this.unsubscribe(channelName)
-    }
 
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'casos'
-        },
-        (payload) => {
-          console.log('Casos change detected:', payload)
-          callback(payload)
-        }
-      )
-      .subscribe()
-
-    this.channels.set(channelName, channel)
-    return channelName
-  }
-
-  /**
-   * Subscribe to changes in the tareas table
-   * @param callback Function to call when tareas data changes
-   * @returns Channel name for unsubscribing
-   */
-  subscribeToTareas(callback: (payload: any) => void): string {
-    const channelName = 'tareas-changes'
-    
-    // Remove existing channel if it exists
-    if (this.channels.has(channelName)) {
-      this.unsubscribe(channelName)
-    }
-
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tareas'
-        },
-        (payload) => {
-          console.log('Tareas change detected:', payload)
-          callback(payload)
-        }
-      )
-      .subscribe()
-
-    this.channels.set(channelName, channel)
-    return channelName
-  }
-
-  /**
-   * Subscribe to changes in the mensajes table
-   * @param callback Function to call when mensajes data changes
-   * @returns Channel name for unsubscribing
-   */
-  subscribeToMensajes(callback: (payload: any) => void): string {
-    const channelName = 'mensajes-changes'
-    
-    // Remove existing channel if it exists
-    if (this.channels.has(channelName)) {
-      this.unsubscribe(channelName)
-    }
-
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'mensajes'
-        },
-        (payload) => {
-          console.log('Mensajes change detected:', payload)
-          callback(payload)
-        }
-      )
-      .subscribe()
-
-    this.channels.set(channelName, channel)
-    return channelName
-  }
-
-  /**
-   * Unsubscribe from a specific channel
-   * @param channelName The name of the channel to unsubscribe from
-   */
-  async unsubscribe(channelName: string): Promise<void> {
-    const channel = this.channels.get(channelName)
-    if (channel) {
-      await supabase.removeChannel(channel)
-      this.channels.delete(channelName)
-      console.log(`Unsubscribed from ${channelName}`)
-    }
-  }
-
-  /**
-   * Unsubscribe from all active channels
-   */
-  async unsubscribeAll(): Promise<void> {
-    for (const [channelName, channel] of this.channels.entries()) {
-      await supabase.removeChannel(channel)
-      console.log(`Unsubscribed from ${channelName}`)
-    }
-    this.channels.clear()
   }
 }
 

@@ -29,13 +29,22 @@ export default function TaskChatModal({ task, isOpen, onClose, userRole }: TaskC
   const [newMessage, setNewMessage] = useState('');
   const [driveLink, setDriveLink] = useState('');
   const [showDriveLinkInput, setShowDriveLinkInput] = useState(false);
+  const [currentUserName, setCurrentUserName] = useState('Usuario');
 
-  const currentUser = authService.getCurrentUser();
+  useEffect(() => {
+    const loadUserName = async () => {
+      const profile = await authService.getCurrentProfile();
+      if (profile) {
+        setCurrentUserName(profile.full_name || profile.email);
+      }
+    };
+    loadUserName();
+  }, []);
 
   useEffect(() => {
     if (task) {
       // Load existing messages for this task
-      const savedMessages = localStorage.getItem(`task_chat_${task.task_id}`);
+      const savedMessages = localStorage.getItem(`task_chat_${task.id}`);
       if (savedMessages) {
         setMessages(JSON.parse(savedMessages));
       } else {
@@ -43,7 +52,7 @@ export default function TaskChatModal({ task, isOpen, onClose, userRole }: TaskC
         const demoMessages: TaskChatMessage[] = [
           {
             id: 'msg_1',
-            task_id: task.task_id,
+            id: task.id,
             sender: 'analista',
             sender_name: 'María González',
             message: 'He creado esta tarea para que puedas subir el contrato. Por favor, súbelo a la carpeta de Drive correspondiente.',
@@ -52,7 +61,7 @@ export default function TaskChatModal({ task, isOpen, onClose, userRole }: TaskC
           },
           {
             id: 'msg_2',
-            task_id: task.task_id,
+            id: task.id,
             sender: 'cliente',
             sender_name: 'Inversiones Andinas S.A.C.',
             message: 'Perfecto, estaré subiendo el documento esta semana. ¿Hay algún formato específico que prefieras?',
@@ -61,18 +70,18 @@ export default function TaskChatModal({ task, isOpen, onClose, userRole }: TaskC
           }
         ];
         setMessages(demoMessages);
-        localStorage.setItem(`task_chat_${task.task_id}`, JSON.stringify(demoMessages));
+        localStorage.setItem(`task_chat_${task.id}`, JSON.stringify(demoMessages));
       }
     }
   }, [task]);
 
   const handleSendMessage = () => {
-    if (newMessage.trim() && task && currentUser) {
+    if (newMessage.trim() && task) {
       const message: TaskChatMessage = {
         id: `msg_${Date.now()}`,
-        task_id: task.task_id,
+        id: task.id,
         sender: userRole,
-        sender_name: currentUser.nombre,
+        sender_name: currentUserName,
         message: newMessage.trim(),
         timestamp: new Date().toISOString(),
         type: 'message'
@@ -80,18 +89,18 @@ export default function TaskChatModal({ task, isOpen, onClose, userRole }: TaskC
 
       const updatedMessages = [...messages, message];
       setMessages(updatedMessages);
-      localStorage.setItem(`task_chat_${task.task_id}`, JSON.stringify(updatedMessages));
+      localStorage.setItem(`task_chat_${task.id}`, JSON.stringify(updatedMessages));
       setNewMessage('');
     }
   };
 
   const handleAddDriveLink = () => {
-    if (driveLink.trim() && task && currentUser) {
+    if (driveLink.trim() && task) {
       const message: TaskChatMessage = {
         id: `msg_${Date.now()}`,
-        task_id: task.task_id,
+        id: task.id,
         sender: userRole,
-        sender_name: currentUser.nombre,
+        sender_name: currentUserName,
         message: `He compartido un archivo: ${driveLink}`,
         timestamp: new Date().toISOString(),
         type: 'file_upload'
@@ -99,7 +108,7 @@ export default function TaskChatModal({ task, isOpen, onClose, userRole }: TaskC
 
       const updatedMessages = [...messages, message];
       setMessages(updatedMessages);
-      localStorage.setItem(`task_chat_${task.task_id}`, JSON.stringify(updatedMessages));
+      localStorage.setItem(`task_chat_${task.id}`, JSON.stringify(updatedMessages));
       setDriveLink('');
       setShowDriveLinkInput(false);
     }

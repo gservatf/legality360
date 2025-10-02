@@ -1,5 +1,5 @@
 export interface Client {
-  cliente_id: string;
+  id: string;
   nombre: string;
   correo: string;
   telefono: string;
@@ -18,7 +18,7 @@ export interface ClientCollaborator {
 }
 
 export interface Case {
-  caso_id: string;
+  id: string;
   cliente_id: string;
   titulo: string;
   estado: 'nuevo' | 'en revisión' | 'en proceso' | 'completado' | 'pausado';
@@ -30,7 +30,7 @@ export interface Case {
 }
 
 export interface BMCBlock {
-  block_id: string;
+  id: string;
   caso_id: string;
   block_name: 'Customer Segments' | 'Value Proposition' | 'Channels' | 'Customer Relationships' | 'Revenue Streams' | 'Key Resources' | 'Key Activities' | 'Key Partners' | 'Cost Structure';
   risk_level: 'green' | 'yellow' | 'red';
@@ -40,7 +40,7 @@ export interface BMCBlock {
 }
 
 export interface Task {
-  task_id: string;
+  id: string;
   caso_id: string;
   titulo: string;
   descripcion: string;
@@ -56,7 +56,7 @@ export interface Task {
 }
 
 export interface Document {
-  document_id: string;
+  id: string;
   caso_id: string;
   nombre: string;
   tipo: 'contrato' | 'reporte' | 'evaluacion' | 'otro';
@@ -66,7 +66,7 @@ export interface Document {
 }
 
 export interface ChatMessage {
-  message_id: string;
+  id: string;
   caso_id: string;
   sender: 'cliente' | 'analista';
   sender_name: string;
@@ -76,7 +76,7 @@ export interface ChatMessage {
 }
 
 export interface Report {
-  report_id: string;
+  id: string;
   caso_id: string;
   titulo: string;
   tipo: 'riesgos' | 'progreso' | 'completo';
@@ -93,7 +93,7 @@ export interface CaseProgress {
 }
 
 export interface User {
-  user_id: string;
+  id: string;
   email: string;
   password_hash: string;
   role: 'cliente' | 'analista' | 'admin';
