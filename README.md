@@ -16,6 +16,7 @@ Legality360 es una plataforma de gestión legal colaborativa para estudios jurí
 
 - [Demo / Screenshots](#demo--screenshots)
 - [Tecnologías principales](#tecnologías-principales)
+- [Documentación de Arquitectura](#documentación-de-arquitectura)
 - [Estructura de Carpetas](#estructura-de-carpetas)
 - [Principales funcionalidades](#principales-funcionalidades)
 - [Instalación y configuración](#instalación-y-configuración)
@@ -43,6 +44,39 @@ Legality360 es una plataforma de gestión legal colaborativa para estudios jurí
 - **shadcn/ui**: Colección de componentes UI accesibles y personalizables.
 - **Tailwind CSS**: Framework de utilidades CSS para estilos rápidos y consistentes.
 - **Supabase**: Backend as a Service (autenticación, base de datos, API REST y tiempo real).
+
+---
+
+## Documentación de Arquitectura
+
+📚 **Documentación Completa de Arquitectura**: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
+
+El proyecto mantiene un **Living Document** de arquitectura que se actualiza con cada cambio significativo del sistema. Este documento incluye:
+
+- **Resumen Ejecutivo**: Overview del sistema y tecnologías core
+- **Arquitectura General**: Diagramas de capas y patrones arquitectónicos
+- **Servicios Implementados**: Documentación detallada de `database.ts`, `auth.ts`, `supabase.ts`
+- **Componentes Principales**: Descripción de componentes React y hooks personalizados
+- **Flujo de Datos**: Diagramas de flujo incluyendo real-time subscriptions
+- **Patrones de Diseño**: Patrones detectados en el codebase
+- **Decisiones de Diseño**: Historial de decisiones arquitectónicas con justificaciones
+- **Registro de Cambios**: Timeline de cambios arquitectónicos significativos
+
+### Características Recientes Documentadas
+
+- ✅ **Suscripciones en Tiempo Real**: Sistema de actualizaciones automáticas usando Supabase Realtime
+- ✅ **Custom Hooks**: Hooks para real-time subscriptions (`useCasosSubscription`, `useTareasSubscription`)
+- ✅ **Gestión de Canales**: Map-based channel management en DatabaseService
+
+### Guía de Mantenimiento
+
+Para desarrolladores que contribuyan al proyecto: [`ARCHITECTURE_MAINTENANCE_GUIDE.md`](./ARCHITECTURE_MAINTENANCE_GUIDE.md)
+
+Esta guía explica:
+- Cuándo actualizar la documentación de arquitectura
+- Cómo documentar nuevas decisiones de diseño
+- Plantillas para entradas en el registro de cambios
+- Checklist de revisión para PRs
 
 ---
 
@@ -151,7 +185,8 @@ legality360/
 ## Roadmap / Próximos pasos
 
 - [ ] Panel de administrador completo
-- [ ] Notificaciones en tiempo real
+- [x] Suscripciones en tiempo real (Implementado - Ver ARCHITECTURE.md)
+- [ ] Notificaciones push en UI
 - [ ] Reportes PDF de horas y tareas
 - [ ] Integración con facturación
 
