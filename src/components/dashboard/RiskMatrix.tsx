@@ -9,7 +9,7 @@ export default function RiskMatrix() {
   const clientId = authService.getCurrentClientId();
   const cases = clientId ? mockDB.getCasesByClientId(clientId) : [];
   const currentCase = cases[0]; // For demo, use first case
-  const bmcBlocks = currentCase ? mockDB.getBMCBlocksByCaseId(currentCase.caso_id) : [];
+  const bmcBlocks = currentCase ? mockDB.getBMCBlocksByCaseId(currentCase.id) : [];
 
   const bmcBlockNames = [
     'Key Partners', 'Key Activities', 'Value Proposition', 'Customer Relationships', 'Customer Segments',
