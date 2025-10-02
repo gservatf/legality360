@@ -12,6 +12,8 @@
 8. [Módulos y Componentes Principales](#módulos-y-componentes-principales)
 9. [Módulos Incompletos o Mockeados](#módulos-incompletos-o-mockeados)
 10. [Recomendaciones de Arquitectura](#recomendaciones-de-arquitectura)
+11. [Decisiones de Diseño Recientes](#decisiones-de-diseño-recientes)
+12. [Registro de Cambios](#registro-de-cambios)
 
 ---
 
@@ -154,7 +156,8 @@ src/
 │
 ├── hooks/
 │   ├── use-toast.ts                    # Hook para notificaciones toast
-│   └── use-mobile.tsx                  # Hook para detección mobile
+│   ├── use-mobile.tsx                  # Hook para detección mobile
+│   └── useRealtimeSubscriptions.ts     # Hooks para suscripciones en tiempo real
 │
 ├── pages/
 │   ├── Index.tsx                       # Página principal/landing
@@ -205,12 +208,18 @@ Clase `DatabaseService` que encapsula todas las operaciones CRUD con Supabase.
 | **Solicitudes** | `createSolicitudHorasExtra(data)` | Crea solicitud de horas extra |
 | | `getSolicitudesByClienteId(clienteId)` | Obtiene solicitudes de un cliente |
 | | `updateSolicitudEstado(id, estado)` | Actualiza estado de solicitud |
+| **Suscripciones Realtime** | `subscribeToCasos(callback)` | Suscripción a cambios en casos |
+| | `subscribeToTareas(callback)` | Suscripción a cambios en tareas |
+| | `subscribeToMensajes(callback)` | Suscripción a cambios en mensajes |
+| | `unsubscribe(channelName)` | Cancela una suscripción específica |
+| | `unsubscribeAll()` | Cancela todas las suscripciones |
 
 #### Características Técnicas
 - **Manejo de Errores**: Try-catch en todos los métodos con logging
 - **Tipo Safety**: TypeScript con tipos importados de `supabase.ts`
 - **Async/Await**: Todas las operaciones son asíncronas
 - **Single Responsibility**: Un método por operación específica
+- **Real-time Subscriptions**: Gestión automática de canales WebSocket para actualizaciones en tiempo real
 
 #### Ejemplo de Implementación
 
@@ -565,6 +574,10 @@ Hooks personalizados para encapsular lógica reutilizable.
 |------|---------|-----------|
 | `useToast` | `use-toast.ts` | Gestión de notificaciones toast |
 | `useMobile` | `use-mobile.tsx` | Detección de dispositivo móvil |
+| `useCasosSubscription` | `useRealtimeSubscriptions.ts` | Suscripción a cambios en casos |
+| `useTareasSubscription` | `useRealtimeSubscriptions.ts` | Suscripción a cambios en tareas |
+| `useMensajesSubscription` | `useRealtimeSubscriptions.ts` | Suscripción a cambios en mensajes |
+| `useRealtimeSubscriptions` | `useRealtimeSubscriptions.ts` | Suscripción múltiple en tiempo real |
 
 **Ejemplo de uso:**
 ```tsx
@@ -573,6 +586,27 @@ toast({
   title: "Éxito",
   description: "Tarea creada correctamente"
 })
+```
+
+**Ejemplo de uso de Real-time Subscriptions:**
+```tsx
+import { useCasosSubscription } from '@/hooks/useRealtimeSubscriptions'
+
+function MiComponente() {
+  const [casos, setCasos] = useState([])
+  
+  const loadCasos = useCallback(async () => {
+    const data = await dbService.getAllCasosWithDetails()
+    setCasos(data)
+  }, [])
+  
+  useEffect(() => { loadCasos() }, [loadCasos])
+  
+  // Actualizaciones automáticas en tiempo real
+  useCasosSubscription(loadCasos)
+  
+  return <div>{/* Tu JSX */}</div>
+}
 ```
 
 ---
@@ -1043,15 +1077,29 @@ Vista para usuarios registrados pero no aprobados.
 
 ### 6. **Notificaciones en Tiempo Real**
 
-**Estado:** 🔴 No implementado
+**Estado:** 🟡 Parcialmente implementado
+
+**Implementado:**
+- ✅ Suscripciones en tiempo real a tablas (casos, tareas, mensajes)
+- ✅ Actualizaciones automáticas de componentes
+- ✅ Sistema de callbacks para eventos de cambio
 
 **Funcionalidad Faltante:**
-- Sistema de notificaciones push
-- Badges de notificaciones no leídas
-- Centro de notificaciones
-- Preferencias de notificación por usuario
+- ⬜ Sistema de notificaciones push en UI
+- ⬜ Badges de notificaciones no leídas
+- ⬜ Centro de notificaciones
+- ⬜ Preferencias de notificación por usuario
+- ⬜ Notificaciones de escritorio (Web Notifications API)
+- ⬜ Email notifications para eventos importantes
+
+**Próximos Pasos:**
+- Implementar componente de notificaciones en Header
+- Crear tabla `notifications` en base de datos
+- Integrar con suscripciones existentes para generar notificaciones
 
 **Complejidad:** Media
+
+**Referencia:** Ver `docs/REALTIME_SUBSCRIPTIONS.md` para implementación actual de real-time
 
 ---
 
@@ -1505,6 +1553,282 @@ legality360-api-gateway
 
 ---
 
+## Decisiones de Diseño Recientes
+
+Esta sección documenta las decisiones arquitectónicas importantes tomadas durante el desarrollo del sistema, con sus justificaciones y alternativas consideradas.
+
+### DDR-001: Implementación de Suscripciones en Tiempo Real (Octubre 2024)
+
+**Fecha:** Octubre 2024  
+**Estado:** ✅ Implementado
+
+**Contexto:**
+El sistema requería que múltiples usuarios vieran actualizaciones automáticas cuando otros usuarios creaban o modificaban casos, tareas o mensajes, sin necesidad de recargar la página.
+
+**Decisión:**
+Implementar suscripciones en tiempo real utilizando Supabase Realtime Channels en el `DatabaseService`, con hooks personalizados de React para facilitar su uso.
+
+**Justificación:**
+1. **Mejor UX**: Los usuarios ven cambios inmediatamente sin polling manual
+2. **Menor carga en servidor**: No se necesitan peticiones HTTP periódicas (polling)
+3. **Integración nativa**: Supabase ya proporciona Realtime incluido en el plan
+4. **WebSockets eficiente**: Conexión persistente más eficiente que HTTP polling
+5. **Type-safe**: TypeScript proporciona tipos correctos para eventos
+
+**Alternativas Consideradas:**
+- **Polling HTTP**: Rechazado por ineficiencia y mayor carga en servidor
+- **Server-Sent Events (SSE)**: Rechazado por menor soporte en navegadores antiguos
+- **WebSockets custom**: Rechazado por complejidad de implementación
+
+**Implementación:**
+```typescript
+// DatabaseService - src/lib/database.ts
+private channels: Map<string, RealtimeChannel> = new Map()
+
+subscribeToCasos(callback: () => void): string {
+  const channelName = 'casos-changes'
+  if (this.channels.has(channelName)) return channelName
+  
+  const channel = supabase
+    .channel(channelName)
+    .on('postgres_changes', 
+      { event: '*', schema: 'public', table: 'casos' },
+      callback
+    )
+    .subscribe()
+  
+  this.channels.set(channelName, channel)
+  return channelName
+}
+
+// Custom Hook - src/hooks/useRealtimeSubscriptions.ts
+export function useCasosSubscription(onCasoChange: () => void) {
+  useEffect(() => {
+    const channelName = dbService.subscribeToCasos(onCasoChange)
+    return () => dbService.unsubscribe(channelName)
+  }, [onCasoChange])
+}
+```
+
+**Impacto:**
+- ✅ Actualizaciones automáticas en AdminPanel, ProfessionalPanel y Dashboard
+- ✅ Eliminación de polling manual
+- ✅ Mejor experiencia colaborativa multi-usuario
+- ⚠️ Requiere habilitar Realtime en Supabase dashboard para cada tabla
+
+**Documentación:**
+- `docs/REALTIME_SUBSCRIPTIONS.md`: Documentación completa de API
+- `docs/ARCHITECTURE.md`: Diagramas de arquitectura
+- `src/examples/realtimeSubscriptionExample.ts`: Ejemplos de uso
+
+---
+
+### DDR-002: Uso de Shadcn/UI sobre Material-UI
+
+**Fecha:** Fase inicial del proyecto  
+**Estado:** ✅ Implementado
+
+**Contexto:**
+Se necesitaba una biblioteca de componentes UI profesionales para construir la interfaz.
+
+**Decisión:**
+Utilizar shadcn/ui (basado en Radix UI + Tailwind CSS) en lugar de Material-UI u otras alternativas.
+
+**Justificación:**
+1. **Propiedad del código**: Los componentes se copian al proyecto (no dependencies externas pesadas)
+2. **Personalización total**: Control completo sobre estilos y comportamiento
+3. **Accesibilidad**: Radix UI proporciona componentes accesibles (a11y) por defecto
+4. **Rendimiento**: Bundle size menor que Material-UI
+5. **Integración con Tailwind**: Aprovecha el utility-first CSS de Tailwind
+6. **TypeScript nativo**: Excelente soporte de tipos
+
+**Alternativas Consideradas:**
+- **Material-UI**: Rechazado por bundle size grande y menor flexibilidad de estilos
+- **Ant Design**: Rechazado por estética opinada y difícil personalización
+- **Chakra UI**: Considerado, pero shadcn/ui ofrece más control
+
+**Impacto:**
+- ✅ 48+ componentes UI reutilizables implementados
+- ✅ Interfaz consistente y profesional
+- ✅ Fácil personalización con Tailwind
+- ✅ Excelente DX (Developer Experience)
+
+---
+
+### DDR-003: Arquitectura de Servicios con Supabase
+
+**Fecha:** Fase inicial del proyecto  
+**Estado:** ✅ Implementado (migración en progreso)
+
+**Contexto:**
+Necesidad de definir cómo se accede a los datos y se gestiona la autenticación.
+
+**Decisión:**
+Utilizar Supabase como BaaS (Backend as a Service) con capa de servicios en TypeScript (`database.ts`, `auth.ts`, `supabaseService.ts`).
+
+**Justificación:**
+1. **PostgreSQL potente**: Base de datos relacional robusta y escalable
+2. **Authentication incluido**: Sistema de auth completo con JWT
+3. **Row Level Security**: Seguridad a nivel de fila en base de datos
+4. **Realtime incluido**: Suscripciones en tiempo real sin costo adicional
+5. **Type generation**: Generación automática de tipos TypeScript
+6. **Storage incluido**: Almacenamiento de archivos integrado
+7. **Sin gestión de servidor**: Infraestructura managed
+
+**Alternativas Consideradas:**
+- **Firebase**: Rechazado por preferencia de SQL sobre NoSQL
+- **Backend custom (Node.js + Express)**: Rechazado por mayor complejidad operativa
+- **AWS Amplify**: Rechazado por complejidad de configuración
+
+**Patrón de Servicio Implementado:**
+```typescript
+// Componentes → database.ts → Supabase → PostgreSQL
+class DatabaseService {
+  async getAllCasos(): Promise<Caso[]> {
+    const { data, error } = await supabase.from('casos').select('*')
+    if (error) throw error
+    return data || []
+  }
+}
+```
+
+**Impacto:**
+- ✅ Desarrollo más rápido sin gestión de backend
+- ✅ Escalabilidad automática
+- ✅ Seguridad con RLS
+- ⚠️ Dependencia de servicio externo (vendor lock-in moderado)
+
+---
+
+### DDR-004: TypeScript Estricto en Todo el Codebase
+
+**Fecha:** Fase inicial del proyecto  
+**Estado:** ✅ Implementado
+
+**Contexto:**
+Definir el nivel de strictness de TypeScript en el proyecto.
+
+**Decisión:**
+Utilizar TypeScript con configuración estricta (`strict: true` en `tsconfig.json`).
+
+**Justificación:**
+1. **Type Safety**: Prevención de errores en tiempo de compilación
+2. **Better IntelliSense**: Mejor autocompletado en IDEs
+3. **Self-documenting code**: Los tipos documentan la API
+4. **Refactoring seguro**: Cambios más seguros con soporte del compilador
+5. **Menos bugs en producción**: Catch errors antes de runtime
+
+**Configuración:**
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true
+  }
+}
+```
+
+**Impacto:**
+- ✅ Código más robusto y mantenible
+- ✅ Mejor experiencia de desarrollo
+- ⚠️ Curva de aprendizaje inicial más alta
+- ⚠️ Tiempo de desarrollo ligeramente mayor
+
+---
+
+## Registro de Cambios
+
+Este registro documenta las actualizaciones significativas a la arquitectura del sistema.
+
+### [2024-10-02] - Actualización de Documentación de Arquitectura
+
+**Agregado:**
+- Sección "Decisiones de Diseño Recientes" para documentar decisiones arquitectónicas
+- Sección "Registro de Cambios" para tracking de actualizaciones
+- Documentación de suscripciones en tiempo real en tabla de métodos de DatabaseService
+- Hooks de real-time en tabla de Custom Hooks Pattern
+
+**Actualizado:**
+- Tabla de contenidos con nuevas secciones
+- Estructura de carpetas `/src` incluyendo `useRealtimeSubscriptions.ts`
+- Características técnicas de DatabaseService con gestión de canales WebSocket
+- Ejemplos de uso de hooks personalizados
+
+**Contexto:**
+Actualización para reflejar la implementación de suscripciones en tiempo real y establecer ARCHITECTURE.md como documento vivo.
+
+---
+
+### [2024-10] - Implementación de Suscripciones en Tiempo Real
+
+**Agregado:**
+- Métodos de suscripción en `DatabaseService` (src/lib/database.ts)
+  - `subscribeToCasos(callback)`
+  - `subscribeToTareas(callback)`
+  - `subscribeToMensajes(callback)`
+  - `unsubscribe(channelName)`
+  - `unsubscribeAll()`
+- Gestión de canales con `Map<string, RealtimeChannel>`
+- Custom hooks para React (src/hooks/useRealtimeSubscriptions.ts)
+  - `useCasosSubscription(callback)`
+  - `useTareasSubscription(callback)`
+  - `useMensajesSubscription(callback)`
+  - `useRealtimeSubscriptions(callbacks)`
+- Documentación completa en `docs/REALTIME_SUBSCRIPTIONS.md`
+- Ejemplos de uso en `src/examples/realtimeSubscriptionExample.ts`
+- Resumen ejecutivo en `REALTIME_IMPLEMENTATION_SUMMARY.md`
+- Guía de usuario en `README_REALTIME.md`
+
+**Modificado:**
+- `database.ts`: Agregada propiedad `channels` y métodos de suscripción
+
+**Impacto:**
+- Mejora UX con actualizaciones automáticas sin polling
+- Reducción de carga en servidor
+- Mejor experiencia colaborativa multi-usuario
+- WebSocket connections managed por Supabase
+
+**Referencias:**
+- PR #5: Implementación de Real-time Subscriptions
+- Documentación: `docs/REALTIME_SUBSCRIPTIONS.md`
+
+---
+
+### [Fase Inicial] - Arquitectura Base del Sistema
+
+**Creado:**
+- Estructura de proyecto con Vite + React + TypeScript
+- Integración con Supabase (PostgreSQL + Auth + Realtime)
+- Implementación de shadcn/ui (48+ componentes)
+- Sistema de autenticación con roles
+- Servicios base:
+  - `database.ts`: CRUD operations
+  - `auth.ts`: Authentication service
+  - `supabase.ts`: Client y tipos
+  - `mockDatabase.ts`: Mock para desarrollo
+- Componentes principales:
+  - AdminPanel
+  - ProfessionalPanel
+  - ClientPanel
+  - TaskKanban
+  - RiskMatrix
+- Routing con React Router v6
+- Sistema de roles: pending, cliente, analista, abogado, admin
+
+**Tecnologías Core:**
+- React 18.3.1
+- TypeScript 5.5.3
+- Vite 5.4.1
+- Supabase 2.52.0
+- Tailwind CSS 3.4.11
+- React Router 6.30.1
+- React Query 5.83.0
+- Zustand 4.5.0
+
+---
+
 ## Conclusiones
 
 ### Fortalezas del Sistema Actual
@@ -1569,8 +1893,24 @@ El sistema está bien arquitectado para crecer. Con las mejoras recomendadas, pu
 
 ---
 
-**Documento generado:** 2024  
-**Versión:** 1.0  
-**Autor:** Equipo Legality360  
-**Última actualización:** [Fecha actual]
+**Documento Living Document**  
+**Versión:** 2.0  
+**Última actualización:** 2024-10-02  
+**Autores:** Equipo Legality360  
+**Estado:** Activo - Se actualiza con cada cambio arquitectónico significativo
+
+**Próxima Revisión:** Cada PR que modifique arquitectura, servicios, componentes o dependencias
+
+**Mantenimiento:**
+Este documento debe actualizarse cuando:
+- Se agreguen nuevos módulos, servicios o componentes
+- Se modifiquen servicios existentes (database.ts, supabase.ts, etc.)
+- Se agreguen o actualicen dependencias significativas
+- Se implementen nuevos patrones de diseño
+- Se tomen decisiones arquitectónicas importantes
+- Se deprecien módulos o funcionalidades
+
+**Historial de Versiones:**
+- v2.0 (2024-10-02): Agregadas secciones de Decisiones de Diseño y Registro de Cambios
+- v1.0 (Fase Inicial): Documentación inicial de arquitectura
 
