@@ -1,32 +1,75 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { MessageCircle, Send, User } from 'lucide-react';
-import { mockDB } from '@/lib/mockDatabase';
+import { dashboardDataService } from '@/lib/dashboardAdapter';
 import { authService } from '@/lib/auth';
+
+interface ChatMessage {
+  message_id: string;
+  caso_id: string;
+  sender: 'cliente' | 'analista';
+  sender_name: string;
+  mensaje: string;
+  fecha_envio: string;
+  leido: boolean;
+}
 
 export default function Chat() {
   const [newMessage, setNewMessage] = useState('');
-  const clientId = authService.getCurrentClientId();
-  const cases = clientId ? mockDB.getCasesByClientId(clientId) : [];
-  const currentCase = cases[0]; // For demo, use first case
-  const messages = currentCase ? mockDB.getChatMessagesByCaseId(currentCase.caso_id) : [];
+  const [cases, setCases] = useState<any[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleSendMessage = () => {
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const profile = await authService.getCurrentProfile();
+        if (profile && profile.role === 'cliente') {
+          const fetchedCases = await dashboardDataService.getCasesByClientId(profile.id);
+          setCases(fetchedCases);
+          
+          // Load messages from localStorage (chat not yet in Supabase)
+          if (fetchedCases.length > 0) {
+            const savedMessages = localStorage.getItem(`chat_messages_${fetchedCases[0].caso_id}`);
+            if (savedMessages) {
+              setMessages(JSON.parse(savedMessages));
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading chat data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  const currentCase = cases[0];
+
+  const handleSendMessage = async () => {
     if (newMessage.trim() && currentCase) {
-      mockDB.addChatMessage({
+      const profile = await authService.getCurrentProfile();
+      const message: ChatMessage = {
+        message_id: `msg_${Date.now()}`,
         caso_id: currentCase.caso_id,
         sender: 'cliente',
-        sender_name: authService.getCurrentUser()?.nombre || 'Cliente',
+        sender_name: profile?.full_name || 'Cliente',
         mensaje: newMessage.trim(),
         fecha_envio: new Date().toISOString(),
         leido: false
-      });
+      };
+      
+      const updatedMessages = [...messages, message];
+      setMessages(updatedMessages);
+      
+      // Save to localStorage (chat not yet in Supabase)
+      localStorage.setItem(`chat_messages_${currentCase.caso_id}`, JSON.stringify(updatedMessages));
       setNewMessage('');
-      // In a real app, this would trigger a re-render
-      window.location.reload();
     }
   };
 
@@ -53,6 +96,16 @@ export default function Chat() {
   const sortedMessages = [...messages].sort((a, b) => 
     new Date(a.fecha_envio).getTime() - new Date(b.fecha_envio).getTime()
   );
+
+  if (loading) {
+    return (
+      <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardContent className="py-8 text-center text-gray-500">
+          Cargando chat...
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
