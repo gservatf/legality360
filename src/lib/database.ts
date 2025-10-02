@@ -362,7 +362,7 @@ class DatabaseService {
     }
   }
 
-
+  async deleteCaso(casoId: string): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('casos')
@@ -371,17 +371,18 @@ class DatabaseService {
 
       if (error) {
         console.error('Error deleting caso:', error)
-
         return false
       }
 
       return true
     } catch (error) {
+      console.error('Error in deleteCaso:', error)
       return false
     }
   }
 
   // Task management
+  async getAllTareas(): Promise<Tarea[]> {
     try {
       const { data, error } = await supabase
         .from('tareas')
@@ -393,6 +394,16 @@ class DatabaseService {
         .order('created_at', { ascending: false })
 
       if (error) {
+        console.error('Error fetching all tareas:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('Error in getAllTareas:', error)
+      return []
+    }
+  }
 
   async getTareasByUser(userId: string): Promise<Tarea[]> {
     try {
@@ -599,8 +610,6 @@ class DatabaseService {
     }
   }
 
-
-  }
 }
 
 export const dbService = new DatabaseService()
