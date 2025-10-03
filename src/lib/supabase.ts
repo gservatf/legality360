@@ -93,8 +93,3 @@ export interface ChatMessage {
   leido: boolean
   created_at?: string
 }
-// Debug solo para confirmar en build
-if (typeof window !== "undefined") {
-  console.log("🔍 Supabase URL:", import.meta.env.VITE_SUPABASE_URL)
-  console.log("🔍 Supabase Key (primeros 10 chars):", import.meta.env.VITE_SUPABASE_ANON_KEY?.slice(0, 10))
-}
