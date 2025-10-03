@@ -26,36 +26,42 @@ class DatabaseService {
     }
   }
 
-  async getAllProfilesWithTaskCounts(): Promise<ProfileWithTaskCount[]> {
-    try {
-      const profiles = await this.getAllProfiles()
-      const profilesWithCounts = await Promise.all(
-        profiles.map(async (profile) => {
-          try {
-            const { count, error } = await supabase
-              .from('tareas')
-              .select('*', { count: 'exact', head: true })
-              .eq('asignado_a', profile.id)
-              .eq('estado', 'pendiente')
+async getAllProfilesWithTaskCounts(): Promise<ProfileWithTaskCount[]> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*') // Trae todos los perfiles
+      .order('created_at', { ascending: false })
 
-            if (error) throw error
+    if (error) throw error
 
-            return {
-              ...profile,
-              tareas_pendientes: count || 0
-            }
-          } catch (err) {
-            console.error(`Error counting tasks for user ${profile.id}:`, err)
-            return { ...profile, tareas_pendientes: 0 }
-          }
-        })
-      )
-      return profilesWithCounts
-    } catch (err) {
-      console.error('Error in getAllProfilesWithTaskCounts:', err)
-      return []
-    }
+    // Luego calculamos las tareas pendientes por cada usuario
+    const profilesWithCounts = await Promise.all(
+      (data || []).map(async (profile) => {
+        const { count, error: countError } = await supabase
+          .from('tareas')
+          .select('*', { count: 'exact', head: true })
+          .eq('asignado_a', profile.id)
+          .eq('estado', 'pendiente')
+
+        if (countError) {
+          console.error('Error contando tareas para usuario:', profile.id, countError)
+        }
+
+        return {
+          ...profile,
+          tareas_pendientes: count || 0,
+        }
+      })
+    )
+
+    return profilesWithCounts
+  } catch (err) {
+    console.error('Error en getAllProfilesWithTaskCounts:', err)
+    return []
   }
+}
+
 
   async getPendingUsers(): Promise<Profile[]> {
     try {
