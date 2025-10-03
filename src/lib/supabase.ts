@@ -3,10 +3,10 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 // -----------------------------
 // Supabase Client (única instancia)
 // -----------------------------
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
-if (!supabaseUrl || !supabaseAnonKey && typeof window !== "undefined") {
+if ((!supabaseUrl || !supabaseAnonKey) && typeof window !== "undefined") {
   console.warn("⚠️ Missing Supabase env vars: VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY")
 }
 
@@ -92,4 +92,9 @@ export interface ChatMessage {
   fecha_envio: string
   leido: boolean
   created_at?: string
+}
+// Debug solo para confirmar en build
+if (typeof window !== "undefined") {
+  console.log("🔍 Supabase URL:", import.meta.env.VITE_SUPABASE_URL)
+  console.log("🔍 Supabase Key (primeros 10 chars):", import.meta.env.VITE_SUPABASE_ANON_KEY?.slice(0, 10))
 }
