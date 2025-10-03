@@ -90,29 +90,39 @@ class DatabaseService {
     }
   }
 
-  async updateProfileRole(userId: string, newRole: UserRole): Promise<Profile | null> {
-    try {
-      const validRoles: UserRole[] = ['admin', 'cliente', 'analista', 'abogado', 'pending']
-      if (!validRoles.includes(newRole)) {
-        console.warn(`⚠️ Rol inválido: ${newRole}`)
-        return null
-      }
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId)
-        .select('id, email, full_name, role') // 👈 devolvemos el registro actualizado
-        .single()
-
-      if (error) throw error
-      console.log('✅ Rol actualizado en Supabase:', data)
-      return this.mapProfile(data)
-    } catch (err) {
-      console.error('❌ Error en updateProfileRole:', err)
+ async updateProfileRole(userId: string, newRole: UserRole): Promise<Profile | null> {
+  try {
+    const validRoles: UserRole[] = ['admin', 'cliente', 'analista', 'abogado', 'pending']
+    if (!validRoles.includes(newRole)) {
+      console.warn(`⚠️ Rol inválido: ${newRole}`)
       return null
     }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ 
+        role: newRole,
+        updated_at: new Date().toISOString()   // 👈 importante si existe updated_at
+      })
+      .eq('id', userId)
+      .select('id, email, full_name, role, updated_at')  // devolvemos confirmación
+      .maybeSingle()   // 👈 evita crash si no encuentra
+
+    if (error) throw error
+
+    if (!data) {
+      console.warn(`⚠️ No se encontró usuario con id ${userId}`)
+      return null
+    }
+
+    console.log(`✅ Rol de ${data.email} actualizado a ${data.role}`)
+    return this.mapProfile(data)
+  } catch (err) {
+    console.error('❌ Error en updateProfileRole:', err)
+    return null
   }
+}
+
 
   // -----------------------------
   // Dashboard stats
