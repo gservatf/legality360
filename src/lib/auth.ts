@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient'
+import { supabase } from './supabase' // 🔒 Usa siempre el mismo cliente
 import type { Session, User } from '@supabase/supabase-js'
 
 export type UserRole = 'pending' | 'cliente' | 'analista' | 'abogado' | 'admin'
@@ -17,21 +17,25 @@ export interface UserProfile {
 // Session & User
 // -----------------------------
 export async function getCurrentSession(): Promise<Session | null> {
-  const { data: { session }, error } = await supabase.auth.getSession()
-  if (error) {
-    console.error('Error getting session:', error.message)
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession()
+    if (error) throw error
+    return session
+  } catch (err) {
+    console.error('Error getting session:', err)
     return null
   }
-  return session
 }
 
 export async function getCurrentUser(): Promise<User | null> {
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error) {
-    console.error('Error getting user:', error.message)
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error) throw error
+    return user
+  } catch (err) {
+    console.error('Error getting user:', err)
     return null
   }
-  return user
 }
 
 // -----------------------------
@@ -41,14 +45,17 @@ export async function getCurrentProfile(): Promise<UserProfile | null> {
   const user = await getCurrentUser()
   if (!user) return null
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, email, full_name, role, created_at, updated_at') // 🔒 evita recursion
+      .eq('id', user.id)
+      .single()
 
-  if (error) {
-    if (error.code === 'PGRST116') {
+    if (error && error.code !== 'PGRST116') throw error
+
+    // Si no existe perfil, lo creamos con rol pending
+    if (!data) {
       const newProfile: UserProfile = {
         id: user.id,
         email: user.email || '',
@@ -59,26 +66,22 @@ export async function getCurrentProfile(): Promise<UserProfile | null> {
 
       const { data: createdProfile, error: createError } = await supabase
         .from('profiles')
-        .upsert(newProfile, { onConflict: 'id' })
+        .insert(newProfile)
         .select()
         .single()
 
-      if (createError) {
-        console.error('Error creating profile:', createError.message)
-        return null
-      }
+      if (createError) throw createError
       return createdProfile
     }
 
-    console.error('Error fetching profile:', error.message)
+    return {
+      ...data,
+      status: data.role === 'pending' ? 'PENDING' : 'ACTIVE'
+    }
+  } catch (err) {
+    console.error('Error fetching profile:', err)
     return null
   }
-
-  if (data.role === 'pending') {
-    return { ...data, status: 'PENDING' }
-  }
-
-  return { ...data, status: 'ACTIVE' }
 }
 
 // -----------------------------
@@ -107,8 +110,7 @@ export async function signInWithGoogle() {
 
 export async function signOut() {
   const { error } = await supabase.auth.signOut()
-  if (error) return { error: error.message }
-  return { error: null }
+  return error ? { error: error.message } : { error: null }
 }
 
 export async function signUp(email: string, password: string, fullName: string) {
@@ -132,7 +134,7 @@ export async function signUp(email: string, password: string, fullName: string) 
 
   const { data: createdProfile, error: createError } = await supabase
     .from('profiles')
-    .upsert(newProfile, { onConflict: 'id' })
+    .insert(newProfile)
     .select()
     .single()
 

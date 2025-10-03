@@ -1,11 +1,3 @@
-import { createClient } from '@supabase/supabase-js'
-
-// ✅ Vite usa import.meta.env para acceder a las variables del .env
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("❌ Missing Supabase environment variables in Vite")
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// ❌ Ya no crea un cliente nuevo
+// ✅ Solo re-exporta el único cliente desde supabase.ts
+export { supabase } from './supabase'

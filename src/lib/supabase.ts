@@ -3,14 +3,17 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 // -----------------------------
 // Supabase Client (única instancia)
 // -----------------------------
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("❌ Missing Supabase environment variables: VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY")
+if (!supabaseUrl || !supabaseAnonKey && typeof window !== "undefined") {
+  console.warn("⚠️ Missing Supabase env vars: VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY")
 }
 
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase: SupabaseClient = createClient(
+  supabaseUrl ?? "",
+  supabaseAnonKey ?? ""
+)
 
 // -----------------------------
 // Shared Types
@@ -83,7 +86,7 @@ export interface CasoWithDetails extends Caso {
 export interface ChatMessage {
   id: string
   caso_id: string
-  sender: Exclude<UserRole, 'pending'> // cualquier rol válido menos 'pending'
+  sender: Exclude<UserRole, 'pending'>
   sender_name: string
   mensaje: string
   fecha_envio: string

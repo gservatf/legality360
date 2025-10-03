@@ -17,28 +17,76 @@ interface AdminPanelProps {
   onLogout: () => void
 }
 
+interface DashboardStats {
+  total_usuarios: number
+  usuarios_pendientes: number
+  total_empresas: number
+  total_casos: number
+  casos_activos: number
+  total_tareas: number
+  tareas_pendientes: number
+  mis_tareas_pendientes: number
+}
+
 export default function AdminPanel({ onLogout }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState('usuarios')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<Profile | null>(null)
-  const [stats, setStats] = useState<any>({})
 
+  const [stats, setStats] = useState<DashboardStats>({
+    total_usuarios: 0,
+    usuarios_pendientes: 0,
+    total_empresas: 0,
+    total_casos: 0,
+    casos_activos: 0,
+    total_tareas: 0,
+    tareas_pendientes: 0,
+    mis_tareas_pendientes: 0
+  })
+
+  // Cargar usuario solo una vez
   useEffect(() => {
     loadCurrentUser()
+  }, [])
+
+  // Cargar estadísticas cada vez que cambias de tab
+  useEffect(() => {
     loadStats()
   }, [activeTab])
 
+  // Limpieza automática de mensajes
+  useEffect(() => {
+    if (success || error) {
+      const timer = setTimeout(() => {
+        setSuccess(null)
+        setError(null)
+      }, 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [success, error])
+
   const loadCurrentUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.user) {
-      const { data: profile } = await supabase
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      if (error) throw error
+      if (!session?.user) {
+        setError('No hay sesión activa')
+        return
+      }
+
+      const { data: profile, error: profileErr } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .single()
+
+      if (profileErr) throw profileErr
       setCurrentUser(profile)
+    } catch (err) {
+      console.error('Error loading current user:', err)
+      setCurrentUser(null)
     }
   }
 
@@ -48,6 +96,7 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
       const dashboardStats = await dbService.getDashboardStats()
       setStats(dashboardStats)
     } catch (err) {
+      console.error('Error loading stats:', err)
       setError('Error al cargar estadísticas')
     } finally {
       setIsLoading(false)
