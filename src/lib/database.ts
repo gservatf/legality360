@@ -17,7 +17,7 @@ class DatabaseService {
   private mapProfile(u: any): Profile {
     return {
       ...u,
-      full_name: u.full_name || 'Sin nombre'
+      full_name: u.full_name && u.full_name.trim() !== '' ? u.full_name : 'Sin nombre'
     }
   }
 
@@ -32,7 +32,7 @@ class DatabaseService {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      return (data || []).map(this.mapProfile)
+      return (data || []).map((u) => this.mapProfile(u))
     } catch (err) {
       console.error('Error in getAllProfiles:', err)
       return []
@@ -43,18 +43,31 @@ class DatabaseService {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select(`
-          id, email, full_name, role, created_at, updated_at,
-          tareas:tareas(count)
-        `)
+        .select('id, email, full_name, role, created_at, updated_at')
         .order('created_at', { ascending: false })
 
       if (error) throw error
 
-      return (data || []).map((profile: any) => ({
-        ...this.mapProfile(profile),
-        tareas_pendientes: profile.tareas?.[0]?.count || 0
-      }))
+      const profilesWithCounts = await Promise.all(
+        (data || []).map(async (profile) => {
+          const { count, error: countError } = await supabase
+            .from('tareas')
+            .select('*', { count: 'exact', head: true })
+            .eq('asignado_a', profile.id)
+            .eq('estado', 'pendiente')
+
+          if (countError) {
+            console.error('Error contando tareas:', countError)
+          }
+
+          return {
+            ...this.mapProfile(profile),
+            tareas_pendientes: count || 0
+          }
+        })
+      )
+
+      return profilesWithCounts
     } catch (err) {
       console.error('Error en getAllProfilesWithTaskCounts:', err)
       return []
@@ -70,31 +83,34 @@ class DatabaseService {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      return (data || []).map(this.mapProfile)
+      return (data || []).map((u) => this.mapProfile(u))
     } catch (err) {
       console.error('Error in getPendingUsers:', err)
       return []
     }
   }
 
-  async updateProfileRole(userId: string, newRole: UserRole): Promise<boolean> {
+  async updateProfileRole(userId: string, newRole: UserRole): Promise<Profile | null> {
     try {
       const validRoles: UserRole[] = ['admin', 'cliente', 'analista', 'abogado', 'pending']
       if (!validRoles.includes(newRole)) {
-        console.warn(`Invalid role attempted: ${newRole}`)
-        return false
+        console.warn(`⚠️ Rol inválido: ${newRole}`)
+        return null
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .update({ role: newRole })
         .eq('id', userId)
+        .select('id, email, full_name, role') // 👈 devolvemos el registro actualizado
+        .single()
 
       if (error) throw error
-      return true
+      console.log('✅ Rol actualizado en Supabase:', data)
+      return this.mapProfile(data)
     } catch (err) {
-      console.error('Error in updateProfileRole:', err)
-      return false
+      console.error('❌ Error en updateProfileRole:', err)
+      return null
     }
   }
 
@@ -114,30 +130,22 @@ class DatabaseService {
     }
 
     try {
-      const [
-        { count: total_usuarios = 0 },
-        { count: usuarios_pendientes = 0 },
-        { count: total_empresas = 0 },
-        { data: casos = [], count: total_casos = 0 },
-        { data: tareas = [], count: total_tareas = 0 }
-      ] = await Promise.all([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'pending'),
-        supabase.from('empresas').select('*', { count: 'exact', head: true }),
-        supabase.from('casos').select('estado', { count: 'exact' }),
-        supabase.from('tareas').select('estado, asignado_a', { count: 'exact' })
-      ])
+      const totalUsuariosRes = await supabase.from('profiles').select('*', { count: 'exact', head: true })
+      const usuariosPendientesRes = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'pending')
+      const totalEmpresasRes = await supabase.from('empresas').select('*', { count: 'exact', head: true })
+      const casosRes = await supabase.from('casos').select('estado', { count: 'exact' })
+      const tareasRes = await supabase.from('tareas').select('estado, asignado_a', { count: 'exact' })
 
-      stats.total_usuarios = total_usuarios
-      stats.usuarios_pendientes = usuarios_pendientes
-      stats.total_empresas = total_empresas
-      stats.total_casos = total_casos
-      stats.casos_activos = casos.filter((c) => c.estado === 'activo').length
-      stats.total_tareas = total_tareas
-      stats.tareas_pendientes = tareas.filter((t) => t.estado === 'pendiente').length
+      stats.total_usuarios = totalUsuariosRes.count || 0
+      stats.usuarios_pendientes = usuariosPendientesRes.count || 0
+      stats.total_empresas = totalEmpresasRes.count || 0
+      stats.total_casos = casosRes.count || 0
+      stats.casos_activos = (casosRes.data || []).filter((c) => c.estado === 'activo').length
+      stats.total_tareas = tareasRes.count || 0
+      stats.tareas_pendientes = (tareasRes.data || []).filter((t) => t.estado === 'pendiente').length
 
       if (userId) {
-        stats.mis_tareas_pendientes = tareas.filter(
+        stats.mis_tareas_pendientes = (tareasRes.data || []).filter(
           (t) => t.asignado_a === userId && t.estado === 'pendiente'
         ).length
       }
