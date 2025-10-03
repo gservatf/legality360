@@ -100,20 +100,12 @@ class DatabaseService {
 
     const { data, error } = await supabase
       .from('profiles')
-      .update({ 
-        role: newRole,
-        updated_at: new Date().toISOString()   // 👈 importante si existe updated_at
-      })
+      .update({ role: newRole })   // 👈 ya no tocamos updated_at
       .eq('id', userId)
-      .select('id, email, full_name, role, updated_at')  // devolvemos confirmación
-      .maybeSingle()   // 👈 evita crash si no encuentra
+      .select('id, email, full_name, role, updated_at')
+      .single()   // 👈 aquí mejor single()
 
     if (error) throw error
-
-    if (!data) {
-      console.warn(`⚠️ No se encontró usuario con id ${userId}`)
-      return null
-    }
 
     console.log(`✅ Rol de ${data.email} actualizado a ${data.role}`)
     return this.mapProfile(data)
@@ -122,6 +114,7 @@ class DatabaseService {
     return null
   }
 }
+
 
 
   // -----------------------------
