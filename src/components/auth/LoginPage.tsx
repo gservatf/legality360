@@ -162,20 +162,21 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center p-2">
-              <img 
-                src="/workspace/uploads/icono legality.png" 
-                alt="Legality360" 
-                className="w-full h-full object-contain"
-              />
-            </div>
-          </div>
-          <CardTitle className="text-2xl font-bold text-gray-900">Legality360</CardTitle>
-          <CardDescription>
-            Sistema de Gestión Legal
-          </CardDescription>
-        </CardHeader>
+  <div className="flex justify-center mb-4">
+    <div className="w-20 h-20 flex items-center justify-center">
+      <img 
+        src="/legality-logo.png" 
+        alt="Legality360" 
+        className="w-full h-full object-contain"
+      />
+    </div>
+  </div>
+  <CardTitle className="text-2xl font-bold text-gray-900">Legality360</CardTitle>
+  <CardDescription>
+    Sistema de Gestión Legal
+  </CardDescription>
+</CardHeader>
+
         
         <CardContent>
           {error && (
