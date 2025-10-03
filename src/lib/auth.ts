@@ -1,196 +1,146 @@
 import { supabase } from './supabaseClient'
 import type { Session, User } from '@supabase/supabase-js'
 
-// -----------------------------
-// Types
-// -----------------------------
+export type UserRole = 'pending' | 'cliente' | 'analista' | 'abogado' | 'admin'
+
 export interface UserProfile {
   id: string
   email: string
   full_name: string
-  role: 'pending' | 'cliente' | 'analista' | 'abogado' | 'admin'
+  role: UserRole
   created_at?: string
   updated_at?: string
+  status?: 'ACTIVE' | 'PENDING'
 }
 
 // -----------------------------
-// Get current session
+// Session & User
 // -----------------------------
 export async function getCurrentSession(): Promise<Session | null> {
-  try {
-    const { data: { session }, error } = await supabase.auth.getSession()
-    if (error) {
-      console.error('Error getting session:', error.message)
-      return null
-    }
-    return session
-  } catch (err) {
-    console.error('Exception getting session:', err)
+  const { data: { session }, error } = await supabase.auth.getSession()
+  if (error) {
+    console.error('Error getting session:', error.message)
     return null
   }
+  return session
 }
 
-// -----------------------------
-// Get current user
-// -----------------------------
 export async function getCurrentUser(): Promise<User | null> {
-  try {
-    const { data: { user }, error } = await supabase.auth.getUser()
-    if (error) {
-      console.error('Error getting user:', error.message)
-      return null
-    }
-    return user
-  } catch (err) {
-    console.error('Exception getting user:', err)
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error) {
+    console.error('Error getting user:', error.message)
     return null
   }
+  return user
 }
 
 // -----------------------------
-// Get current profile
+// Profile
 // -----------------------------
 export async function getCurrentProfile(): Promise<UserProfile | null> {
-  try {
-    const user = await getCurrentUser()
-    if (!user) return null
+  const user = await getCurrentUser()
+  if (!user) return null
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
 
-    if (error) {
-      // Caso: el perfil aún no existe → lo creamos como pending
-      if (error.code === 'PGRST116') {
-        const newProfile: UserProfile = {
-          id: user.id,
-          email: user.email || '',
-          full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
-          role: 'pending'
-        }
-
-        const { data: createdProfile, error: createError } = await supabase
-          .from('profiles')
-          .insert([newProfile])
-          .select()
-          .single()
-
-        if (createError) {
-          console.error('Error creating profile:', createError.message)
-          return null
-        }
-        return createdProfile
+  if (error) {
+    if (error.code === 'PGRST116') {
+      const newProfile: UserProfile = {
+        id: user.id,
+        email: user.email || '',
+        full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+        role: 'pending',
+        status: 'PENDING'
       }
 
-      console.error('Error fetching profile:', error.message)
-      return null
+      const { data: createdProfile, error: createError } = await supabase
+        .from('profiles')
+        .upsert(newProfile, { onConflict: 'id' })
+        .select()
+        .single()
+
+      if (createError) {
+        console.error('Error creating profile:', createError.message)
+        return null
+      }
+      return createdProfile
     }
 
-    // BLOQUEO: si está pendiente, lo marcamos y el front lo redirige
-    if (data.role === 'pending') {
-      throw new Error('PENDING_ACCOUNT')
-    }
-
-    return data
-  } catch (err) {
-    console.error('Exception getting profile:', err)
+    console.error('Error fetching profile:', error.message)
     return null
   }
-}
 
-// -----------------------------
-// Sign in
-// -----------------------------
-export async function signIn(
-  email: string,
-  password: string
-): Promise<{ user: User | null, profile: UserProfile | null, error: any }> {
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error || !data.user) {
-      return { user: null, profile: null, error }
-    }
-    return { user: data.user, profile: null, error: null }
-  } catch (err: any) {
-    return { user: null, profile: null, error: err }
+  if (data.role === 'pending') {
+    return { ...data, status: 'PENDING' }
   }
+
+  return { ...data, status: 'ACTIVE' }
 }
 
 // -----------------------------
-// Sign in with Google
+// Sign In / Out / Up
 // -----------------------------
-export async function signInWithGoogle(): Promise<{ user: User | null, profile: UserProfile | null, error: any }> {
+export async function signIn(email: string, password: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error || !data.user) {
+    return { user: null, profile: null, error }
+  }
+  const profile = await getCurrentProfile()
+  return { user: data.user, profile, error: null }
+}
+
+export async function signInWithGoogle() {
   try {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' })
-    if (error) return { user: null, profile: null, error }
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/dashboard` }
+    })
     return { user: null, profile: null, error: null }
   } catch (err: any) {
     return { user: null, profile: null, error: err }
   }
 }
 
-// -----------------------------
-// Sign out
-// -----------------------------
 export async function signOut() {
-  try {
-    const { error } = await supabase.auth.signOut()
-    if (error) {
-      console.error('Error in signOut:', error.message)
-      return { error: error.message }
-    }
-    return { error: null }
-  } catch (err) {
-    console.error('Exception in signOut:', err)
-    return { error: 'An unexpected error occurred' }
-  }
+  const { error } = await supabase.auth.signOut()
+  if (error) return { error: error.message }
+  return { error: null }
 }
 
-// -----------------------------
-// Sign up (always as pending)
-// -----------------------------
-export async function signUp(
-  email: string,
-  password: string,
-  fullName: string
-): Promise<{ user: User | null, profile: UserProfile | null, error: any }> {
-  try {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName }
-      }
-    })
+export async function signUp(email: string, password: string, fullName: string) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { full_name: fullName } }
+  })
 
-    if (error || !data.user) {
-      return { user: null, profile: null, error }
-    }
-
-    const user = data.user
-    const newProfile: UserProfile = {
-      id: user.id,
-      email: user.email || '',
-      full_name: fullName,
-      role: 'pending'
-    }
-
-    const { data: createdProfile, error: createError } = await supabase
-      .from('profiles')
-      .insert([newProfile])
-      .select()
-      .single()
-
-    if (createError) {
-      return { user, profile: null, error: createError }
-    }
-
-    return { user, profile: createdProfile, error: null }
-  } catch (err: any) {
-    return { user: null, profile: null, error: err }
+  if (error || !data.user) {
+    return { user: null, profile: null, error }
   }
+
+  const newProfile: UserProfile = {
+    id: data.user.id,
+    email: data.user.email || '',
+    full_name: fullName,
+    role: 'pending',
+    status: 'PENDING'
+  }
+
+  const { data: createdProfile, error: createError } = await supabase
+    .from('profiles')
+    .upsert(newProfile, { onConflict: 'id' })
+    .select()
+    .single()
+
+  if (createError) {
+    return { user: data.user, profile: null, error: createError }
+  }
+
+  return { user: data.user, profile: createdProfile, error: null }
 }
 
 // -----------------------------
@@ -206,11 +156,5 @@ export const authService = {
   signUp
 }
 
-// Reglas de acceso
-export function canAccessClientPanel(profile: UserProfile | null): boolean {
-  return profile?.role === 'cliente'
-}
-
-export function isAdmin(profile: UserProfile | null): boolean {
-  return profile?.role === 'admin'
-}
+export const isAdmin = (profile: UserProfile | null) => profile?.role === 'admin'
+export const canAccessClientPanel = (profile: UserProfile | null) => profile?.role === 'cliente'

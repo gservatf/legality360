@@ -1,6 +1,8 @@
 import { supabase } from './supabase'
 import type { Profile, Empresa, Caso, Tarea, ProfileWithTaskCount, CasoWithDetails } from './supabase'
 
+export type UserRole = 'pending' | 'cliente' | 'analista' | 'abogado' | 'admin'
+
 class DatabaseService {
   // -----------------------------
   // Profiles
@@ -9,11 +11,15 @@ class DatabaseService {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, email, full_name, role, created_at, updated_at')
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      return data || []
+
+      return (data || []).map((u) => ({
+        ...u,
+        full_name: u.full_name || 'Sin nombre'
+      }))
     } catch (err) {
       console.error('Error in getAllProfiles:', err)
       return []
@@ -25,15 +31,22 @@ class DatabaseService {
       const profiles = await this.getAllProfiles()
       const profilesWithCounts = await Promise.all(
         profiles.map(async (profile) => {
-          const { count } = await supabase
-            .from('tareas')
-            .select('*', { count: 'exact', head: true })
-            .eq('asignado_a', profile.id)
-            .eq('estado', 'pendiente')
+          try {
+            const { count, error } = await supabase
+              .from('tareas')
+              .select('*', { count: 'exact', head: true })
+              .eq('asignado_a', profile.id)
+              .eq('estado', 'pendiente')
 
-          return {
-            ...profile,
-            tareas_pendientes: count || 0
+            if (error) throw error
+
+            return {
+              ...profile,
+              tareas_pendientes: count || 0
+            }
+          } catch (err) {
+            console.error(`Error counting tasks for user ${profile.id}:`, err)
+            return { ...profile, tareas_pendientes: 0 }
           }
         })
       )
@@ -48,20 +61,30 @@ class DatabaseService {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, email, full_name, role, created_at, updated_at')
         .eq('role', 'pending')
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      return data || []
+
+      return (data || []).map((u) => ({
+        ...u,
+        full_name: u.full_name || 'Sin nombre'
+      }))
     } catch (err) {
       console.error('Error in getPendingUsers:', err)
       return []
     }
   }
 
-  async updateProfileRole(userId: string, newRole: Profile['role']): Promise<boolean> {
+  async updateProfileRole(userId: string, newRole: UserRole): Promise<boolean> {
     try {
+      const validRoles: UserRole[] = ['admin', 'cliente', 'analista', 'abogado', 'pending']
+      if (!validRoles.includes(newRole)) {
+        console.warn(`Invalid role attempted: ${newRole}`)
+        return false
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -141,14 +164,14 @@ class DatabaseService {
     }
   }
 
-  async createEmpresa(nombre: string): Promise<boolean> {
+  async createEmpresa(nombre: string): Promise<Empresa | null> {
     try {
-      const { error } = await supabase.from('empresas').insert([{ nombre }])
+      const { data, error } = await supabase.from('empresas').insert([{ nombre }]).select().single()
       if (error) throw error
-      return true
+      return data
     } catch (err) {
       console.error('Error in createEmpresa:', err)
-      return false
+      return null
     }
   }
 
@@ -192,23 +215,18 @@ class DatabaseService {
 
       if (error) throw error
 
-      const casosWithCounts = (data || []).map((caso: any) => {
-        const tareas = caso.tareas || []
-        return {
-          ...caso,
-          tareas_count: tareas.length,
-          tareas_pendientes: tareas.filter((t: any) => t.estado === 'pendiente').length
-        }
-      })
-
-      return casosWithCounts as CasoWithDetails[]
+      return (data || []).map((caso: any) => ({
+        ...caso,
+        tareas_count: caso.tareas?.length || 0,
+        tareas_pendientes: (caso.tareas || []).filter((t: any) => t.estado === 'pendiente').length
+      })) as CasoWithDetails[]
     } catch (err) {
       console.error('Error in getAllCasosWithDetails:', err)
       return []
     }
   }
 
-  async getCasosByUser(userId: string, userRole: string): Promise<CasoWithDetails[]> {
+  async getCasosByUser(userId: string, userRole: UserRole): Promise<CasoWithDetails[]> {
     try {
       let query = supabase
         .from('casos')
@@ -229,8 +247,7 @@ class DatabaseService {
           .eq('usuario_id', userId)
 
         if (userAssignments?.length) {
-          const casoIds = userAssignments.map((a) => a.caso_id)
-          query = query.in('id', casoIds)
+          query = query.in('id', userAssignments.map((a) => a.caso_id))
         } else {
           return []
         }
@@ -239,43 +256,51 @@ class DatabaseService {
       const { data, error } = await query.order('created_at', { ascending: false })
       if (error) throw error
 
-      const casosWithCounts = (data || []).map((caso: any) => {
-        const tareas = caso.tareas || []
-        return {
-          ...caso,
-          tareas_count: tareas.length,
-          tareas_pendientes: tareas.filter((t: any) => t.estado === 'pendiente').length
-        }
-      })
-
-      return casosWithCounts as CasoWithDetails[]
+      return (data || []).map((caso: any) => ({
+        ...caso,
+        tareas_count: caso.tareas?.length || 0,
+        tareas_pendientes: (caso.tareas || []).filter((t: any) => t.estado === 'pendiente').length
+      })) as CasoWithDetails[]
     } catch (err) {
       console.error('Error in getCasosByUser:', err)
       return []
     }
   }
 
-  async createCaso(empresaId: string, clienteId: string, titulo: string): Promise<boolean> {
+  async createCaso(empresaId: string, clienteId: string, titulo: string): Promise<Caso | null> {
     try {
-      const { error } = await supabase.from('casos').insert([
-        {
-          empresa_id: empresaId,
-          cliente_id: clienteId,
-          titulo,
-          estado: 'activo'
-        }
-      ])
+      const { data, error } = await supabase
+        .from('casos')
+        .insert([{ empresa_id: empresaId, cliente_id: clienteId, titulo, estado: 'activo' }])
+        .select()
+        .single()
+
       if (error) throw error
-      return true
+      return data
     } catch (err) {
       console.error('Error in createCaso:', err)
-      return false
+      return null
     }
   }
 
   // -----------------------------
   // Tareas
   // -----------------------------
+  async getAllTareas(): Promise<Tarea[]> {
+    try {
+      const { data, error } = await supabase
+        .from('tareas')
+        .select(`*, caso:casos(*), asignado:profiles(*)`)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return data || []
+    } catch (err) {
+      console.error('Error in getAllTareas:', err)
+      return []
+    }
+  }
+
   async getTareasByUser(userId: string): Promise<Tarea[]> {
     try {
       const { data, error } = await supabase
@@ -297,21 +322,40 @@ class DatabaseService {
     asignadoA: string,
     titulo: string,
     descripcion?: string
+  ): Promise<Tarea | null> {
+    try {
+      const { data, error } = await supabase
+        .from('tareas')
+        .insert([{ caso_id: casoId, asignado_a: asignadoA, titulo, descripcion, estado: 'pendiente' }])
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (err) {
+      console.error('Error in createTarea:', err)
+      return null
+    }
+  }
+
+  async updateTarea(
+    tareaId: string,
+    titulo: string,
+    descripcion: string | undefined,
+    casoId: string,
+    asignadoA: string,
+    estado: 'pendiente' | 'en_progreso' | 'completada'
   ): Promise<boolean> {
     try {
-      const { error } = await supabase.from('tareas').insert([
-        {
-          caso_id: casoId,
-          asignado_a: asignadoA,
-          titulo,
-          descripcion,
-          estado: 'pendiente'
-        }
-      ])
+      const { error } = await supabase
+        .from('tareas')
+        .update({ titulo, descripcion, caso_id: casoId, asignado_a: asignadoA, estado })
+        .eq('id', tareaId)
+
       if (error) throw error
       return true
     } catch (err) {
-      console.error('Error in createTarea:', err)
+      console.error('Error in updateTarea:', err)
       return false
     }
   }
@@ -326,6 +370,17 @@ class DatabaseService {
       return true
     } catch (err) {
       console.error('Error in updateTareaEstado:', err)
+      return false
+    }
+  }
+
+  async deleteTarea(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase.from('tareas').delete().eq('id', id)
+      if (error) throw error
+      return true
+    } catch (err) {
+      console.error('Error in deleteTarea:', err)
       return false
     }
   }
