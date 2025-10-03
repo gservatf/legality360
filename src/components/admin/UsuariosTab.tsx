@@ -10,9 +10,14 @@ import { Profile, ProfileWithTaskCount } from '@/lib/supabase'
 const ROLES: Profile['role'][] = ['admin', 'analista', 'abogado', 'cliente']
 
 // -----------------------------
-// Componente fila de usuario pendiente
+// Fila de usuario pendiente
 // -----------------------------
-function PendingUserRow({ u, loadUsuarios, setSuccess, setError }: {
+function PendingUserRow({
+  u,
+  loadUsuarios,
+  setSuccess,
+  setError
+}: {
   u: Profile,
   loadUsuarios: () => Promise<void>,
   setSuccess: (msg: string) => void,
@@ -27,13 +32,14 @@ function PendingUserRow({ u, loadUsuarios, setSuccess, setError }: {
     try {
       const ok = await dbService.updateProfileRole(u.id, selectedRole as Profile['role'])
       if (ok) {
-        setSuccess('Rol actualizado correctamente')
+        setSuccess(`Rol de ${u.email} actualizado a "${selectedRole}"`)
         setSelectedRole(undefined)
-        loadUsuarios()
+        await loadUsuarios()
       } else {
         setError('Error al actualizar el rol')
       }
-    } catch {
+    } catch (err) {
+      console.error('Error en handleSave:', err)
       setError('Error al actualizar el rol')
     } finally {
       setSaving(false)
@@ -41,7 +47,7 @@ function PendingUserRow({ u, loadUsuarios, setSuccess, setError }: {
   }
 
   return (
-    <TableRow key={u.id}>
+    <TableRow>
       <TableCell>{u.email}</TableCell>
       <TableCell>{u.full_name || 'Sin nombre'}</TableCell>
       <TableCell className="flex gap-2 items-center">
@@ -60,7 +66,7 @@ function PendingUserRow({ u, loadUsuarios, setSuccess, setError }: {
           disabled={!selectedRole || saving}
           onClick={handleSave}
         >
-          Guardar
+          {saving ? 'Guardando...' : 'Guardar'}
         </Button>
       </TableCell>
     </TableRow>
@@ -75,8 +81,15 @@ export default function UsuariosTab({ stats, setError, setSuccess }: any) {
   const [pendingUsers, setPendingUsers] = useState<Profile[]>([])
 
   const loadUsuarios = async () => {
-    setUsers(await dbService.getAllProfilesWithTaskCounts())
-    setPendingUsers(await dbService.getPendingUsers())
+    try {
+      const allUsers = await dbService.getAllProfilesWithTaskCounts()
+      const pendings = await dbService.getPendingUsers()
+      setUsers(allUsers)
+      setPendingUsers(pendings)
+    } catch (err) {
+      console.error('Error cargando usuarios:', err)
+      setError('No se pudieron cargar los usuarios')
+    }
   }
 
   useEffect(() => {
@@ -107,7 +120,7 @@ export default function UsuariosTab({ stats, setError, setSuccess }: any) {
             <TableBody>
               {pendingUsers.map((u) => (
                 <PendingUserRow
-                  key={u.id}
+                  key={u.id} // ✅ key aquí, no dentro de PendingUserRow
                   u={u}
                   loadUsuarios={loadUsuarios}
                   setSuccess={setSuccess}
@@ -132,7 +145,7 @@ export default function UsuariosTab({ stats, setError, setSuccess }: any) {
             {users.map((u) => (
               <TableRow key={u.id}>
                 <TableCell>{u.email}</TableCell>
-                <TableCell>{u.full_name}</TableCell>
+                <TableCell>{u.full_name || 'Sin nombre'}</TableCell>
                 <TableCell><Badge>{u.role}</Badge></TableCell>
                 <TableCell>{u.tareas_pendientes}</TableCell>
               </TableRow>
