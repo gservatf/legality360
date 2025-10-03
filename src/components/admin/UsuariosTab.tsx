@@ -23,18 +23,17 @@ function PendingUserRow({
   setSuccess: (msg: string) => void,
   setError: (msg: string) => void
 }) {
-  const [selectedRole, setSelectedRole] = useState<string | undefined>(undefined)
+  const [selectedRole, setSelectedRole] = useState<string>(u.role || 'pending')
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
-    if (!selectedRole) return
+    if (!selectedRole || selectedRole === u.role) return // 🔒 evita actualizar con el mismo rol
     setSaving(true)
     try {
       const ok = await dbService.updateProfileRole(u.id, selectedRole as Profile['role'])
       if (ok) {
         setSuccess(`Rol de ${u.email} actualizado a "${selectedRole}"`)
-        setSelectedRole(undefined)
-        await loadUsuarios()
+        await loadUsuarios() // 🔄 recarga lista para reflejar cambios
       } else {
         setError('Error al actualizar el rol')
       }
@@ -57,13 +56,15 @@ function PendingUserRow({
           </SelectTrigger>
           <SelectContent>
             {ROLES.map((r) => (
-              <SelectItem key={r} value={r}>{r}</SelectItem>
+              <SelectItem key={r} value={r}>
+                {r}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
         <Button
           size="sm"
-          disabled={!selectedRole || saving}
+          disabled={!selectedRole || saving || selectedRole === u.role}
           onClick={handleSave}
         >
           {saving ? 'Guardando...' : 'Guardar'}
@@ -120,7 +121,7 @@ export default function UsuariosTab({ stats, setError, setSuccess }: any) {
             <TableBody>
               {pendingUsers.map((u) => (
                 <PendingUserRow
-                  key={u.id} // ✅ key aquí, no dentro de PendingUserRow
+                  key={u.id}
                   u={u}
                   loadUsuarios={loadUsuarios}
                   setSuccess={setSuccess}
@@ -146,7 +147,9 @@ export default function UsuariosTab({ stats, setError, setSuccess }: any) {
               <TableRow key={u.id}>
                 <TableCell>{u.email}</TableCell>
                 <TableCell>{u.full_name || 'Sin nombre'}</TableCell>
-                <TableCell><Badge>{u.role}</Badge></TableCell>
+                <TableCell>
+                  <Badge>{u.role}</Badge>
+                </TableCell>
                 <TableCell>{u.tareas_pendientes}</TableCell>
               </TableRow>
             ))}
