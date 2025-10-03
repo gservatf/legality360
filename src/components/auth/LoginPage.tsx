@@ -1,14 +1,14 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, AlertCircle, CheckCircle } from 'lucide-react'
-import { authService } from '@/lib/auth'
-import { supabase } from '@/lib/supabaseClient'
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { authService } from '@/lib/auth';
+import { supabase } from '@/lib/supabaseClient';
 
 interface LoginPageProps {
   onLogin: () => void
@@ -99,12 +99,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     }
 
     try {
-      setIsLoading(true)
-      setError(null)
-      setSuccess(null)
+      setIsLoading(true);
+      setError(null);
+      setSuccess(null);
 
       // 1. Registrar usuario en Supabase Auth
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -114,47 +114,62 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         }
       });
 
-      if (signUpError || !data.user) {
-        setError(signUpError?.message || 'No se pudo registrar el usuario')
-        setIsLoading(false)
-        return
+      if (signUpError) {
+        setError(signUpError.message || 'No se pudo registrar el usuario');
+        setIsLoading(false);
+        return;
       }
 
-      const user = data.user
+      // 2. Obtener sesión activa (puede ser null si requiere confirmación de email)
+      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionUser = sessionData?.session?.user;
 
-      // 2. Insertar perfil en la tabla "profiles"
+      if (!sessionUser) {
+        // Si no hay sesión, probablemente requiere confirmación de email
+        setSuccess('Tu cuenta ha sido creada. Revisa tu correo para confirmar tu email antes de iniciar sesión.');
+        setRegisterData({
+          fullName: '',
+          email: '',
+          password: '',
+          confirmPassword: ''
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. Insertar perfil en la tabla "profiles" con el id del usuario autenticado
       const { error: profileError } = await supabase
         .from('profiles')
         .insert([{
-          id: user.id,
-          email: user.email,
+          id: sessionUser.id,
+          email: sessionUser.email,
           full_name: fullName,
           role: 'pending',
           created_at: new Date().toISOString()
-        }])
+        }]);
 
       if (profileError) {
-        setError(profileError.message || 'No se pudo crear el perfil')
-        setIsLoading(false)
-        return
+        setError(profileError.message || 'No se pudo crear el perfil');
+        setIsLoading(false);
+        return;
       }
 
-      // 3. Mensaje de éxito y redirección
-      setSuccess('Tu cuenta ha sido creada y está pendiente de autorización')
+      // 4. Mensaje de éxito y redirección
+      setSuccess('Tu cuenta ha sido creada y está pendiente de autorización');
       setRegisterData({
         fullName: '',
         email: '',
         password: '',
         confirmPassword: ''
-      })
+      });
       setTimeout(() => {
-        navigate('/login')
-      }, 2500)
+        navigate('/login');
+      }, 2500);
     } catch (err: any) {
-      console.error('Register error:', err)
-      setError(err.message || 'Error al registrar usuario')
+      console.error('Register error:', err);
+      setError(err.message || 'Error al registrar usuario');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
