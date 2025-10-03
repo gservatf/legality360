@@ -12,14 +12,14 @@ export default function UsuariosTab({ stats, setError, setSuccess }: any) {
   const [users, setUsers] = useState<ProfileWithTaskCount[]>([])
   const [pendingUsers, setPendingUsers] = useState<Profile[]>([])
 
-  useEffect(() => {
-    load()
-  }, [])
-
-  const load = async () => {
+  const loadUsuarios = async () => {
     setUsers(await dbService.getAllProfilesWithTaskCounts())
     setPendingUsers(await dbService.getPendingUsers())
   }
+
+  useEffect(() => {
+    loadUsuarios()
+  }, [])
 
   return (
     <Card>
@@ -49,13 +49,13 @@ export default function UsuariosTab({ stats, setError, setSuccess }: any) {
                   <TableCell>{u.full_name || 'Sin nombre'}</TableCell>
                   <TableCell>
                     <Select
-                      onValueChange={async (role) => {
-                        const ok = await dbService.updateProfileRole(u.id, role as Profile['role'])
+                      onValueChange={async (selectedRole) => {
+                        const ok = await dbService.updateProfileRole(u.id, selectedRole as Profile['role'])
                         if (ok) {
-                          setSuccess(`Usuario ${u.email} aprobado como ${role}`)
-                          load()
+                          setSuccess('Rol asignado correctamente')
+                          loadUsuarios()
                         } else {
-                          setError('Error al actualizar el rol')
+                          setError('No se pudo actualizar el rol')
                         }
                       }}
                     >
