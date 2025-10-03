@@ -12,12 +12,7 @@ const ROLES: Profile['role'][] = ['admin', 'analista', 'abogado', 'cliente']
 // -----------------------------
 // Fila de usuario pendiente
 // -----------------------------
-function PendingUserRow({
-  u,
-  loadUsuarios,
-  setSuccess,
-  setError
-}: {
+function PendingUserRow({ u, loadUsuarios, setSuccess, setError }: {
   u: Profile,
   loadUsuarios: () => Promise<void>,
   setSuccess: (msg: string) => void,
@@ -27,13 +22,13 @@ function PendingUserRow({
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
-    if (!selectedRole || selectedRole === u.role) return // 🔒 evita actualizar con el mismo rol
+    if (!selectedRole) return
     setSaving(true)
     try {
       const ok = await dbService.updateProfileRole(u.id, selectedRole as Profile['role'])
       if (ok) {
         setSuccess(`Rol de ${u.email} actualizado a "${selectedRole}"`)
-        await loadUsuarios() // 🔄 recarga lista para reflejar cambios
+        await loadUsuarios() // 🔑 refrescar lista inmediatamente
       } else {
         setError('Error al actualizar el rol')
       }
@@ -56,15 +51,13 @@ function PendingUserRow({
           </SelectTrigger>
           <SelectContent>
             {ROLES.map((r) => (
-              <SelectItem key={r} value={r}>
-                {r}
-              </SelectItem>
+              <SelectItem key={r} value={r}>{r}</SelectItem>
             ))}
           </SelectContent>
         </Select>
         <Button
           size="sm"
-          disabled={!selectedRole || saving || selectedRole === u.role}
+          disabled={!selectedRole || saving}
           onClick={handleSave}
         >
           {saving ? 'Guardando...' : 'Guardar'}
@@ -73,6 +66,7 @@ function PendingUserRow({
     </TableRow>
   )
 }
+
 
 // -----------------------------
 // Componente principal
