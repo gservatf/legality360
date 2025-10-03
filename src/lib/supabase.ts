@@ -1,17 +1,16 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 // -----------------------------
-// Supabase Client
+// Supabase Client (única instancia)
 // -----------------------------
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("❌ Missing Supabase environment variables")
-  throw new Error("Missing Supabase environment variables: check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY")
+  throw new Error("❌ Missing Supabase environment variables: VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY")
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey)
 
 // -----------------------------
 // Shared Types
@@ -21,10 +20,10 @@ export type UserRole = 'pending' | 'cliente' | 'analista' | 'abogado' | 'admin'
 export interface Profile {
   id: string
   email: string
-  full_name: string | null
+  full_name?: string | null
   role: UserRole
   created_at: string
-  updated_at: string | null
+  updated_at?: string | null
 }
 
 export interface Empresa {
@@ -61,9 +60,9 @@ export interface Tarea {
   caso_id: string
   asignado_a: string | null
   titulo: string
-  descripcion: string | null
+  descripcion?: string | null
   estado: 'pendiente' | 'en_progreso' | 'completada'
-  fecha_limite: string | null
+  fecha_limite?: string | null
   created_at: string
   caso?: Caso
   asignado?: Profile
