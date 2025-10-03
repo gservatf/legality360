@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 import { dbService } from '@/lib/database'
 import { Profile, ProfileWithTaskCount } from '@/lib/supabase'
 
@@ -43,34 +44,59 @@ export default function UsuariosTab({ stats, setError, setSuccess }: any) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pendingUsers.map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell>{u.email}</TableCell>
-                  <TableCell>{u.full_name || 'Sin nombre'}</TableCell>
-                  <TableCell>
-                    <Select
-                      onValueChange={async (selectedRole) => {
-                        const ok = await dbService.updateProfileRole(u.id, selectedRole as Profile['role'])
-                        if (ok) {
-                          setSuccess('Rol asignado correctamente')
-                          loadUsuarios()
-                        } else {
-                          setError('No se pudo actualizar el rol')
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="w-[160px]">
-                        <SelectValue placeholder="Asignar rol" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ROLES.map((r) => (
-                          <SelectItem key={r} value={r}>{r}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {pendingUsers.map((u) => {
+                const [selectedRole, setSelectedRole] = useState<string | undefined>(undefined);
+                const [saving, setSaving] = useState(false);
+                return (
+                  <TableRow key={u.id}>
+                    <TableCell>{u.email}</TableCell>
+                    <TableCell>{u.full_name || 'Sin nombre'}</TableCell>
+                    <TableCell className="flex gap-2 items-center">
+                      <Select
+                        value={selectedRole}
+                        onValueChange={setSelectedRole}
+                      >
+                        <SelectTrigger className="w-[160px]">
+                          <SelectValue placeholder="Asignar rol" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ROLES.map((r) => (
+                            <SelectItem key={r} value={r}>{r}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        size="sm"
+                        disabled={!selectedRole || saving}
+                        onClick={async () => {
+                          if (!selectedRole) return;
+                          setSaving(true);
+                          try {
+                            const { supabase } = await import('@/lib/supabaseClient');
+                            const { error } = await supabase
+                              .from('profiles')
+                              .update({ role: selectedRole })
+                              .eq('id', u.id);
+                            if (!error) {
+                              setSuccess('Rol actualizado correctamente');
+                              setSelectedRole(undefined);
+                              loadUsuarios();
+                            } else {
+                              setError('Error al actualizar el rol');
+                            }
+                          } catch {
+                            setError('Error al actualizar el rol');
+                          } finally {
+                            setSaving(false);
+                          }
+                        }}
+                      >
+                        Guardar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}
