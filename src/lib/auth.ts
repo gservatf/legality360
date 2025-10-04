@@ -1,4 +1,4 @@
-import { supabase } from './supabase' // 🔒 Usa siempre el mismo cliente
+import { supabase } from './supabase'
 import type { Session, User } from '@supabase/supabase-js'
 
 export type UserRole = 'pending' | 'cliente' | 'analista' | 'abogado' | 'admin'
@@ -48,7 +48,7 @@ export async function getCurrentProfile(): Promise<UserProfile | null> {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email, full_name, role, created_at, updated_at') // 🔒 evita recursion
+      .select('id, email, full_name, role, created_at, updated_at')
       .eq('id', user.id)
       .single()
 
@@ -90,8 +90,10 @@ export async function getCurrentProfile(): Promise<UserProfile | null> {
 export async function signIn(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error || !data.user) {
+    console.error('❌ Sign-in error:', error?.message)
     return { user: null, profile: null, error }
   }
+
   const profile = await getCurrentProfile()
   return { user: data.user, profile, error: null }
 }
@@ -104,6 +106,7 @@ export async function signInWithGoogle() {
     })
     return { user: null, profile: null, error: null }
   } catch (err: any) {
+    console.error('❌ Google sign-in error:', err.message)
     return { user: null, profile: null, error: err }
   }
 }
@@ -121,6 +124,7 @@ export async function signUp(email: string, password: string, fullName: string) 
   })
 
   if (error || !data.user) {
+    console.error('❌ Sign-up error:', error?.message)
     return { user: null, profile: null, error }
   }
 
@@ -139,6 +143,7 @@ export async function signUp(email: string, password: string, fullName: string) 
     .single()
 
   if (createError) {
+    console.error('❌ Error creating profile after sign-up:', createError.message)
     return { user: data.user, profile: null, error: createError }
   }
 

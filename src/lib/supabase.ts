@@ -1,95 +1,25 @@
+// src/lib/supabase.ts
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 // -----------------------------
-// Supabase Client (única instancia)
+// Supabase Client — Versión blindada para Vite
 // -----------------------------
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+let supabase: SupabaseClient | null = null
 
-if ((!supabaseUrl || !supabaseAnonKey) && typeof window !== "undefined") {
-  console.warn("⚠️ Missing Supabase env vars: VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY")
-}
+export function getSupabaseClient(): SupabaseClient {
+  if (supabase) return supabase
 
-export const supabase: SupabaseClient = createClient(
-  supabaseUrl ?? "",
-  supabaseAnonKey ?? ""
-)
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// -----------------------------
-// Shared Types
-// -----------------------------
-export type UserRole = 'pending' | 'cliente' | 'analista' | 'abogado' | 'admin'
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('❌ Missing Supabase environment variables:')
+    console.error('VITE_SUPABASE_URL:', supabaseUrl)
+    console.error('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey)
+    throw new Error('Supabase environment variables missing at runtime.')
+  }
 
-export interface Profile {
-  id: string
-  email: string
-  full_name?: string | null
-  role: UserRole
-  created_at: string
-  updated_at?: string | null
-}
-
-export interface Empresa {
-  id: string
-  nombre: string
-  created_at: string
-}
-
-export interface Caso {
-  id: string
-  empresa_id: string
-  cliente_id: string | null
-  titulo: string
-  estado: 'activo' | 'cerrado'
-  created_at: string
-  empresa?: Empresa
-  cliente?: Profile
-  asignaciones?: Asignacion[]
-  tareas?: Tarea[]
-}
-
-export interface Asignacion {
-  id: string
-  caso_id: string
-  usuario_id: string
-  rol_asignado: 'analista' | 'abogado'
-  created_at: string
-  usuario?: Profile
-  caso?: Caso
-}
-
-export interface Tarea {
-  id: string
-  caso_id: string
-  asignado_a: string | null
-  titulo: string
-  descripcion?: string | null
-  estado: 'pendiente' | 'en_progreso' | 'completada'
-  fecha_limite?: string | null
-  created_at: string
-  caso?: Caso
-  asignado?: Profile
-}
-
-export interface ProfileWithTaskCount extends Profile {
-  tareas_pendientes?: number
-}
-
-export interface CasoWithDetails extends Caso {
-  empresa: Empresa
-  cliente: Profile | null
-  asignaciones: (Asignacion & { usuario: Profile })[]
-  tareas_count?: number
-  tareas_pendientes?: number
-}
-
-export interface ChatMessage {
-  id: string
-  caso_id: string
-  sender: Exclude<UserRole, 'pending'>
-  sender_name: string
-  mensaje: string
-  fecha_envio: string
-  leido: boolean
-  created_at?: string
+  supabase = createClient(supabaseUrl, supabaseAnonKey)
+  console.info('✅ Supabase client initialized successfully.')
+  return supabase
 }

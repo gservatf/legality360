@@ -1,57 +1,73 @@
-'use client'
-
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router-dom'
 import { getCurrentProfile } from '@/lib/auth'
 import type { UserProfile } from '@/lib/auth'
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<UserProfile | null>(null)
 
   useEffect(() => {
+    let isMounted = true
+
     const init = async () => {
       try {
         const prof = await getCurrentProfile()
+
+        if (!isMounted) return
         setProfile(prof)
 
+        // Si no hay perfil, redirige al login
         if (!prof) {
-          router.push('/login')
+          navigate('/login', { replace: true })
           return
         }
 
+        // Si el perfil está pendiente, redirige
         if (prof.role === 'pending') {
-          router.push('/pendiente')
+          navigate('/pendiente', { replace: true })
           return
         }
 
         // Redirección según rol
-        if (prof.role === 'admin') {
-          router.push('/admin/dashboard')
-        } else if (prof.role === 'cliente') {
-          router.push('/cliente/dashboard')
-        } else if (prof.role === 'analista') {
-          router.push('/analista/dashboard')
-        } else if (prof.role === 'abogado') {
-          router.push('/abogado/dashboard')
+        switch (prof.role) {
+          case 'admin':
+            navigate('/admin/dashboard', { replace: true })
+            break
+          case 'cliente':
+            navigate('/cliente/dashboard', { replace: true })
+            break
+          case 'analista':
+            navigate('/analista/dashboard', { replace: true })
+            break
+          case 'abogado':
+            navigate('/abogado/dashboard', { replace: true })
+            break
         }
       } catch (err: any) {
-        if (err.message === 'PENDING_ACCOUNT') {
-          router.push('/pendiente')
-        } else {
-          router.push('/login')
-        }
+        console.error('Error en AuthGuard:', err)
+        navigate('/login', { replace: true })
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
+
     init()
-  }, [router])
+
+    return () => {
+      isMounted = false
+    }
+  }, [navigate])
 
   if (loading) {
-    return <p className="text-center text-gray-500 mt-10">Cargando...</p>
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-gray-500 text-center">Cargando sesión...</p>
+      </div>
+    )
   }
 
+  // Si ya hay perfil cargado, renderiza el contenido protegido
   return <>{children}</>
 }
